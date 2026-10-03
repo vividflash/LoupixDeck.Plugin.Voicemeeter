@@ -286,7 +286,7 @@ internal sealed class RawAdjustmentStepCommand : RawAdjustmentCommandBase
 /// <summary>
 /// Dial press: resets to 0 (clamped to [Min, Max]) — the original RawAdjustment has no reset value
 /// of its own, so this mirrors family B's common default. On a touch button it draws the live value
-/// bar, like <see cref="AdjustmentResetCommand"/>.
+/// bar, like <see cref="AdjustmentCommand"/>.
 /// </summary>
 internal sealed class RawAdjustmentResetCommand : RawAdjustmentCommandBase, IDisplayImageCommand
 {

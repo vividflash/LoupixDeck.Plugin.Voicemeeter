@@ -5,27 +5,25 @@ namespace LoupixDeck.Plugin.Voicemeeter.Commands;
 
 /// <summary>
 /// Builds the channel-centric picker menu from the spec lists: Voicemeeter > Strips / Buses >
-/// "1: Mic" > every toggle and adjustment that applies to that channel. On a dial target each
-/// adjustment also gets a group entry that fills left/right/press with Down/Up/Reset at once.
+/// "1: Mic" > every toggle and adjustment that applies to that channel.
 /// </summary>
 internal static class MenuBuilder
 {
-    public static IReadOnlyList<MenuNode> Build(ButtonTargets target, Edition edition,
+    public static IReadOnlyList<MenuNode> Build(Edition edition,
         IReadOnlyList<ToggleSpec> toggles, IReadOnlyList<AdjustmentSpec> adjustments,
         Func<Channel, string?> label)
     {
-        var dial = target.HasFlag(ButtonTargets.RotaryEncoder);
         var strips = new List<MenuNode>();
         for (var i = 0; i < EditionInfo.Strips(edition); i++)
         {
-            var node = ChannelNode(false, i, edition, dial, toggles, adjustments, label);
+            var node = ChannelNode(false, i, edition, toggles, adjustments, label);
             if (node != null) strips.Add(node);
         }
 
         var buses = new List<MenuNode>();
         for (var i = 0; i < EditionInfo.Buses(edition); i++)
         {
-            var node = ChannelNode(true, i, edition, dial, toggles, adjustments, label);
+            var node = ChannelNode(true, i, edition, toggles, adjustments, label);
             if (node != null) buses.Add(node);
         }
 
@@ -51,7 +49,7 @@ internal static class MenuBuilder
         return VmParam.KindApplies(kind, apiIndex, edition) ? (apiIndex + 1).ToString() : null;
     }
 
-    private static MenuNode? ChannelNode(bool isBus, int apiIndex, Edition edition, bool dial,
+    private static MenuNode? ChannelNode(bool isBus, int apiIndex, Edition edition,
         IReadOnlyList<ToggleSpec> toggles, IReadOnlyList<AdjustmentSpec> adjustments, Func<Channel, string?> label)
     {
         var items = new List<MenuNode>();
@@ -62,24 +60,7 @@ internal static class MenuBuilder
             var value = ParameterValue(spec.Kind, isBus, apiIndex, edition);
             if (value == null) continue;
             var p = new Dictionary<string, string>(StringComparer.Ordinal) { [VmParam.ParameterName(spec.Kind)] = value };
-            if (dial)
-            {
-                items.Add(new MenuNode
-                {
-                    Name = $"{spec.DisplayName} (dial)",
-                    RotaryGroup = new Dictionary<RotaryAction, MenuCommandRef>
-                    {
-                        [RotaryAction.CounterClockwise] = new() { CommandName = spec.DownName, Parameters = p },
-                        [RotaryAction.Clockwise] = new() { CommandName = spec.UpName, Parameters = p },
-                        [RotaryAction.Press] = new() { CommandName = spec.ResetName, Parameters = p }
-                    }
-                });
-            }
-            else
-            {
-                // Single Down/Up stay in the flat command list; here only the value display.
-                items.Add(new MenuNode { Name = $"{spec.DisplayName} Reset / display", CommandName = spec.ResetName, Parameters = p });
-            }
+            items.Add(new MenuNode { Name = spec.DisplayName, CommandName = spec.CommandName, Parameters = p });
         }
 
         foreach (var spec in toggles)

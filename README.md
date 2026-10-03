@@ -32,25 +32,27 @@ All of these show the live on/off state on a touch button.
 
 ### Knobs
 
-`...Down(<channel>,<step>)` / `...Up(<channel>,<step>)` change the value by step (default below); `...Reset(<channel>)` sets it to the reset value and, on a touch button, shows the live value.
+`Voicemeeter.<Name>(<channel>,<step>)`: on a dial, a turn changes the value by step per tick (default below) and a press sets the reset value. On a touch button it shows the live value and a press resets.
 
-| Command family | Channel | Range (step, reset) | Potato only |
+| Command | Channel | Range (step, reset) | Potato only |
 |---|---|---|---|
-| `Voicemeeter.StripGainDown/Up/Reset` | Strip | -60 to +12 dB (step 1, reset 0) | |
-| `Voicemeeter.BusGainDown/Up/Reset` | Bus | -60 to +12 dB (step 1, reset 0) | |
-| `Voicemeeter.StripCompDown/Up/Reset` | Hardware input | 0 to 10 (step 1, reset 0) | |
-| `Voicemeeter.StripGateDown/Up/Reset` | Hardware input | 0 to 10 (step 1, reset 0) | |
-| `Voicemeeter.StripReverbDown/Up/Reset` | Hardware input | 0 to 10 (step 1, reset 0) | yes |
-| `Voicemeeter.StripDelayDown/Up/Reset` | Hardware input | 0 to 10 (step 1, reset 0) | yes |
-| `Voicemeeter.StripFx1Down/Up/Reset` | Hardware input | 0 to 10 (step 1, reset 0) | yes |
-| `Voicemeeter.StripFx2Down/Up/Reset` | Hardware input | 0 to 10 (step 1, reset 0) | yes |
-| `Voicemeeter.StripPanXDown/Up/Reset` | Strip | -0.5 to +0.5 (step 0.1, reset 0) | |
-| `Voicemeeter.StripPanYDown/Up/Reset` | Strip; range depends on the strip | hardware 0 to 1, virtual -0.5 to +0.5 (step 0.1, reset 0) | |
-| `Voicemeeter.StripEQGain1Down/Up/Reset` | Virtual input | -12 to +12 dB (step 1, reset 0) | |
-| `Voicemeeter.StripEQGain2Down/Up/Reset` | Virtual input | -12 to +12 dB (step 1, reset 0) | |
-| `Voicemeeter.StripEQGain3Down/Up/Reset` | Virtual input | -12 to +12 dB (step 1, reset 0) | yes |
+| `Voicemeeter.StripGain` | Strip | -60 to +12 dB (step 1, reset 0) | |
+| `Voicemeeter.BusGain` | Bus | -60 to +12 dB (step 1, reset 0) | |
+| `Voicemeeter.StripComp` | Hardware input | 0 to 10 (step 1, reset 0) | |
+| `Voicemeeter.StripGate` | Hardware input | 0 to 10 (step 1, reset 0) | |
+| `Voicemeeter.StripReverb` | Hardware input | 0 to 10 (step 1, reset 0) | yes |
+| `Voicemeeter.StripDelay` | Hardware input | 0 to 10 (step 1, reset 0) | yes |
+| `Voicemeeter.StripFx1` | Hardware input | 0 to 10 (step 1, reset 0) | yes |
+| `Voicemeeter.StripFx2` | Hardware input | 0 to 10 (step 1, reset 0) | yes |
+| `Voicemeeter.StripPanX` | Strip | -0.5 to +0.5 (step 0.1, reset 0) | |
+| `Voicemeeter.StripPanY` | Strip; range depends on the strip | hardware 0 to 1, virtual -0.5 to +0.5 (step 0.1, reset 0) | |
+| `Voicemeeter.StripEQGain1` | Virtual input | -12 to +12 dB (step 1, reset 0) | |
+| `Voicemeeter.StripEQGain2` | Virtual input | -12 to +12 dB (step 1, reset 0) | |
+| `Voicemeeter.StripEQGain3` | Virtual input | -12 to +12 dB (step 1, reset 0) | yes |
 
-For a dial, pick Voicemeeter > Strips (or Buses) > channel > "... Gain (dial)" in the command menu. That fills turn left, turn right and press in one step.
+In the command menu: Voicemeeter > Strips (or Buses) > channel > e.g. "Strip Gain". A dial can keep a different command on press, e.g. `Voicemeeter.StripMute`.
+
+The 0.x commands `...Down`, `...Up` and `...Reset` still work but are no longer listed. Dials that carry them (with `...Reset` or nothing on press) are moved to the new command on first start.
 
 ### Globals
 
@@ -83,7 +85,7 @@ One band per adjacent dial: channel name, a level bar (green/yellow/red zones, w
 
 ## Building
 
-`LoupixDeck.PluginSdk` 1.23.0 is not on nuget.org. Put its nupkg into `local-feed\`, then run `dotnet test` and `.\build.ps1` (this writes `dist\voicemeeter-<version>-windows.zip`).
+Run `dotnet test` and `.\build.ps1` (this writes `dist\voicemeeter-<version>-windows.zip`). The plugin needs LoupixDeck 1.33.0 or newer.
 
 ## License
 

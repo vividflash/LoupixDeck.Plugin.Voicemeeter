@@ -16,8 +16,7 @@ public class CommandTests
         foreach (var n in new[]
                  {
                      "Voicemeeter.StripMute", "Voicemeeter.BusMute",
-                     "Voicemeeter.StripGainDown", "Voicemeeter.StripGainUp", "Voicemeeter.StripGainReset",
-                     "Voicemeeter.BusGainDown", "Voicemeeter.BusGainUp", "Voicemeeter.BusGainReset"
+                     "Voicemeeter.StripGain", "Voicemeeter.BusGain"
                  })
         {
             Assert.Contains(n, names);
@@ -36,9 +35,9 @@ public class CommandTests
         Assert.Equal("Strip", mute.Parameters[0].Name);
         Assert.Equal("1", mute.Parameters[0].DefaultValue);
 
-        var up = rig.Command("Voicemeeter.BusGainUp").Descriptor;
-        Assert.Equal("({Bus},{Step})", up.ParameterTemplate);
-        Assert.Equal("1", up.Parameters[1].DefaultValue);
+        var gain = rig.Command("Voicemeeter.BusGain").Descriptor;
+        Assert.Equal("({Bus},{Step})", gain.ParameterTemplate);
+        Assert.Equal("1", gain.Parameters[1].DefaultValue);
     }
 
     [Fact]
@@ -104,10 +103,10 @@ public class CommandTests
         api.RunningType = 0;
         using var rig = new Rig(api);
         await rig.Run("Voicemeeter.StripMute", "1");
-        await rig.Run("Voicemeeter.StripGainUp", "1");
+        await rig.Turn("Voicemeeter.StripGain", 1, "1");
         Assert.Empty(api.Writes);
         Assert.Contains("offline", rig.Render("Voicemeeter.StripMute", "1").Texts);
-        Assert.Contains("offline", rig.Render("Voicemeeter.StripGainReset", "1").Texts);
+        Assert.Contains("offline", rig.Render("Voicemeeter.StripGain", "1").Texts);
     }
 
     [Fact]
@@ -126,10 +125,10 @@ public class CommandTests
     {
         using var rig = new Rig();
         rig.Api.Floats["Strip[0].Gain"] = 11.5f;
-        await rig.Run("Voicemeeter.StripGainUp", "1");
+        await rig.Turn("Voicemeeter.StripGain", 1, "1");
         Assert.Equal(("Strip[0].Gain", 12f), rig.Api.Writes[^1]);
         var writes = rig.Api.Writes.Count;
-        await rig.Run("Voicemeeter.StripGainUp", "1");
+        await rig.Turn("Voicemeeter.StripGain", 1, "1");
         Assert.Equal(writes, rig.Api.Writes.Count); // already at max: no write
     }
 
@@ -138,7 +137,7 @@ public class CommandTests
     {
         using var rig = new Rig();
         rig.Api.Floats["Bus[0].Gain"] = -58f;
-        await rig.Run("Voicemeeter.BusGainDown", "A1", "3");
+        await rig.Turn("Voicemeeter.BusGain", -1, "A1", "3");
         Assert.Equal(("Bus[0].Gain", -60f), rig.Api.Writes[^1]);
     }
 
@@ -146,16 +145,16 @@ public class CommandTests
     public async Task GainDown_HalfStep()
     {
         using var rig = new Rig();
-        await rig.Run("Voicemeeter.StripGainDown", "2", "0.5");
+        await rig.Turn("Voicemeeter.StripGain", -1, "2", "0.5");
         Assert.Equal(("Strip[1].Gain", -0.5f), rig.Api.Writes[^1]);
     }
 
     [Fact]
-    public async Task GainReset_SetsZero()
+    public async Task Gain_Press_SetsZero()
     {
         using var rig = new Rig();
         rig.Api.Floats["Strip[4].Gain"] = -20f;
-        await rig.Run("Voicemeeter.StripGainReset", "5");
+        await rig.Press("Voicemeeter.StripGain", "5");
         Assert.Equal(("Strip[4].Gain", 0f), rig.Api.Writes[^1]);
     }
 
@@ -164,16 +163,16 @@ public class CommandTests
     {
         using var rig = new Rig();
         rig.Api.Strings["Strip[0].Label"] = "Mic";
-        await rig.Command("Voicemeeter.StripGainUp").Execute(rig.DialCtx(2, "1"));
+        await ((IAdjustmentCommand)rig.Command("Voicemeeter.StripGain")).ApplyAdjustment(rig.DialCtx(2, "1"), 1);
         Assert.Equal([(12, "Mic +1.0 dB")], rig.Host.Overlays);
     }
 
     [Fact]
-    public void GainReset_RendersBar()
+    public void Gain_RendersBar()
     {
         using var rig = new Rig();
         rig.Api.Floats["Strip[0].Gain"] = -24f;
-        var canvas = rig.Render("Voicemeeter.StripGainReset", "1");
+        var canvas = rig.Render("Voicemeeter.StripGain", "1");
         Assert.Equal(["Strip 1", "Gain", "-24.0 dB"], canvas.Texts);
         var bar = Assert.Single(canvas.Fills);
         Assert.Equal(Palette.Active, bar.Color);
@@ -182,17 +181,17 @@ public class CommandTests
         rig.Api.Floats["Strip[0].Mute"] = 1;
         rig.Api.Dirty = true;
         rig.Vm.PollOnce();
-        Assert.Equal(Palette.Inactive, Assert.Single(rig.Render("Voicemeeter.StripGainReset", "1").Fills).Color);
+        Assert.Equal(Palette.Inactive, Assert.Single(rig.Render("Voicemeeter.StripGain", "1").Fills).Color);
     }
 
     [Fact]
-    public async Task GainReset_RedrawsWhenKnobTurns()
+    public async Task Gain_RedrawsWhenKnobTurns()
     {
         using var rig = new Rig();
-        rig.Render("Voicemeeter.BusGainReset", "A1");
+        rig.Render("Voicemeeter.BusGain", "A1");
         rig.Host.Refreshes.Clear();
-        await rig.Run("Voicemeeter.BusGainUp", "A1");
-        Assert.Contains("Voicemeeter.BusGainReset", rig.Host.Refreshes);
+        await rig.Turn("Voicemeeter.BusGain", 1, "A1");
+        Assert.Contains("Voicemeeter.BusGain", rig.Host.Refreshes);
     }
 
     [Fact]
@@ -239,7 +238,7 @@ public class CommandTests
     public void AllSpecs_HaveUniqueNames()
     {
         var names = Toggles.All.Select(s => s.CommandName)
-            .Concat(Adjustments.All.SelectMany(s => new[] { s.UpName, s.DownName, s.ResetName }))
+            .Concat(Adjustments.All.SelectMany(s => new[] { s.CommandName, s.UpName, s.DownName, s.ResetName }))
             .ToList();
         Assert.Equal(names.Count, names.Distinct().Count());
     }

@@ -21,8 +21,8 @@ public sealed class VoicemeeterPlugin : LoupixPlugin, IPluginSettingsPage, IMenu
     {
         Id = "voicemeeter",
         Name = "Voicemeeter",
-        Version = new Version(0, 1, 0),
-        SdkVersion = new Version(1, 23, 0),
+        Version = new Version(1, 0, 0),
+        SdkVersion = new Version(1, 25, 0),
         Author = "vividflash",
         Description = "Mute and gain controls for Voicemeeter, Banana and Potato strips and buses."
     };
@@ -68,6 +68,8 @@ public sealed class VoicemeeterPlugin : LoupixPlugin, IPluginSettingsPage, IMenu
 
     public override IEnumerable<ISideStripProvider> GetSideStripProviders() => _sideStrips;
 
+    public override IEnumerable<CommandMigration> GetCommandMigrations() => Adjustments.All.SelectMany(AdjustmentCommands.Migrations);
+
     public override IReadOnlyList<CommandGroupDescriptor> GetCommandGroups() =>
     [
         new CommandGroupDescriptor
@@ -84,7 +86,7 @@ public sealed class VoicemeeterPlugin : LoupixPlugin, IPluginSettingsPage, IMenu
         if (vm == null || vm.State == ConnectionState.NotInstalled)
             return Task.FromResult<IReadOnlyList<MenuNode>>([]);
 
-        var nodes = MenuBuilder.Build(target, vm.MenuEdition, Toggles.All, Adjustments.All,
+        var nodes = MenuBuilder.Build(vm.MenuEdition, Toggles.All, Adjustments.All,
             vm.PeekLabel);
         return Task.FromResult(nodes);
     }

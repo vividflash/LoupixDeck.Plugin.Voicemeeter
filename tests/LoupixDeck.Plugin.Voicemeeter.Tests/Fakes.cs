@@ -141,6 +141,8 @@ internal sealed class FakeHost : IPluginHost
     public List<(int Slot, string Text)> Overlays { get; } = [];
     public IPluginLogger Logger => FakeLog;
     public IPluginSettings Settings { get; } = new FakeSettings();
+    public string CurrentLanguage => "en";
+    public string Tr(string key) => key;
     public FolderGridInfo FolderGrid => new(5, 3, 0);
     public DeviceInfo? ActiveDevice => null;
     public bool IsInExclusiveMode => false;
@@ -238,6 +240,14 @@ internal sealed class Rig : IDisposable
     };
 
     public Task Run(string name, params string[] parameters) => Command(name).Execute(Ctx(parameters));
+
+    /// <summary>Dial turn on rotary 0, as the host dispatches an IAdjustmentCommand.</summary>
+    public Task Turn(string name, int ticks, params string[] parameters) =>
+        ((IAdjustmentCommand)Command(name)).ApplyAdjustment(DialCtx(0, parameters), ticks);
+
+    /// <summary>Dial press on rotary 0.</summary>
+    public Task Press(string name, params string[] parameters) =>
+        ((IAdjustmentCommand)Command(name)).ApplyReset(DialCtx(0, parameters));
 
     public FakeCanvas Render(string name, params string[] parameters)
     {

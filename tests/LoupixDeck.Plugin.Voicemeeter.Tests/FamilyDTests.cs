@@ -216,7 +216,7 @@ public class FamilyDTests
         var provider = new LevelStripProvider(rig.Vm, rig.Host.Settings, rig.Host.Logger);
         Assert.IsAssignableFrom<ISegmentStripProvider>(provider);
         using var session = (LevelStripSession)provider.CreateSession(Context(
-            new SideStripRotary { Index = 0, LeftCommand = "Voicemeeter.StripGainDown(2,1)", RightCommand = "Voicemeeter.StripGainUp(2,1)" },
+            new SideStripRotary { Index = 0, LeftCommand = "Voicemeeter.StripGain(2,1)", RightCommand = "Voicemeeter.StripGain(2,1)" },
             new SideStripRotary { Index = 1, Label = "Speakers", PressCommand = "Voicemeeter.BusMute(A1)" },
             new SideStripRotary { Index = 2, Label = "Spotify", RightCommand = "Audio.VolumeUp(x)" }));
 
@@ -251,8 +251,8 @@ public class FamilyDTests
     public void Strip_RenamedHardwareInputAdjustmentOnDial_MetersItsGlobalStripNumber()
     {
         // StripComp (renamed from InputComp) is a HardwareInput-restricted adjustment; the dial
-        // carries the global strip number ("1"), and the bound-dial detection (by generated
-        // Up/Down/Reset command name) must still recognise it and meter Strip[0], not treat it as
+        // carries the global strip number ("1"), and the bound-dial detection (here by the pre-1.0
+        // Up/Down/Reset command names, which stay registered) must still recognise it and meter Strip[0], not treat it as
         // a HardwareInput-local index.
         var source = DialChannelParser.FromRotary(new SideStripRotary
         {
@@ -310,7 +310,7 @@ public class FamilyDTests
         rig.Vm.Clock = () => now;
         rig.Api.Levels[(3, 0)] = 0.1f;
         var provider = new LevelStripProvider(rig.Vm, rig.Host.Settings, rig.Host.Logger);
-        var session = provider.CreateSession(Context(new SideStripRotary { RightCommand = "Voicemeeter.BusGainUp(A1,1)" }));
+        var session = provider.CreateSession(Context(new SideStripRotary { RightCommand = "Voicemeeter.BusGain(A1,1)" }));
         var changes = 0;
         session.StripChanged += (_, _) => changes++;
 

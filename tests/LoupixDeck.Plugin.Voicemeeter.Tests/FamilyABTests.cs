@@ -185,7 +185,7 @@ public class FamilyABTests
     {
         using var rig = new Rig();
         rig.Api.Floats["Strip[0].Comp"] = 9.5f;
-        await rig.Run("Voicemeeter.StripCompUp", "1");
+        await rig.Turn("Voicemeeter.StripComp", 1, "1");
         Assert.Equal(("Strip[0].Comp", 10f), rig.Api.Writes[^1]);
     }
 
@@ -194,7 +194,7 @@ public class FamilyABTests
     {
         using var rig = new Rig();
         rig.Api.Floats["Strip[0].Comp"] = 0.5f;
-        await rig.Run("Voicemeeter.StripCompDown", "1");
+        await rig.Turn("Voicemeeter.StripComp", -1, "1");
         Assert.Equal(("Strip[0].Comp", 0f), rig.Api.Writes[^1]);
     }
 
@@ -203,7 +203,7 @@ public class FamilyABTests
     {
         using var rig = new Rig();
         rig.Api.Floats["Strip[0].Comp"] = 5f;
-        await rig.Run("Voicemeeter.StripCompReset", "1");
+        await rig.Press("Voicemeeter.StripComp", "1");
         Assert.Equal(("Strip[0].Comp", 0f), rig.Api.Writes[^1]);
     }
 
@@ -213,9 +213,9 @@ public class FamilyABTests
         // Potato: 5 hardware inputs, so global strip 6 is the first virtual input.
         using var rig = new Rig();
         rig.Api.Floats["Strip[5].Comp"] = 5f;
-        await rig.Run("Voicemeeter.StripCompUp", "6");
+        await rig.Turn("Voicemeeter.StripComp", 1, "6");
         Assert.Empty(rig.Api.Writes);
-        Assert.Contains("n/a", rig.Render("Voicemeeter.StripCompReset", "6").Texts);
+        Assert.Contains("n/a", rig.Render("Voicemeeter.StripComp", "6").Texts);
     }
 
     [Fact]
@@ -223,7 +223,7 @@ public class FamilyABTests
     {
         using var rig = new Rig();
         rig.Api.Floats["Strip[0].Gate"] = 9.5f;
-        await rig.Run("Voicemeeter.StripGateUp", "1");
+        await rig.Turn("Voicemeeter.StripGate", 1, "1");
         Assert.Equal(("Strip[0].Gate", 10f), rig.Api.Writes[^1]);
     }
 
@@ -232,7 +232,7 @@ public class FamilyABTests
     {
         using var rig = new Rig();
         rig.Api.Floats["Strip[0].Gate"] = 0.5f;
-        await rig.Run("Voicemeeter.StripGateDown", "1");
+        await rig.Turn("Voicemeeter.StripGate", -1, "1");
         Assert.Equal(("Strip[0].Gate", 0f), rig.Api.Writes[^1]);
     }
 
@@ -241,7 +241,7 @@ public class FamilyABTests
     {
         using var rig = new Rig();
         rig.Api.Floats["Strip[0].Reverb"] = 9.5f;
-        await rig.Run("Voicemeeter.StripReverbUp", "1");
+        await rig.Turn("Voicemeeter.StripReverb", 1, "1");
         Assert.Equal(("Strip[0].Reverb", 10f), rig.Api.Writes[^1]);
     }
 
@@ -251,9 +251,9 @@ public class FamilyABTests
         var api = FakeVoicemeeterApi.Potato();
         api.RunningType = 2;
         using var rig = new Rig(api);
-        await rig.Run("Voicemeeter.StripReverbUp", "1");
+        await rig.Turn("Voicemeeter.StripReverb", 1, "1");
         Assert.Empty(api.Writes);
-        Assert.Contains("n/a", rig.Render("Voicemeeter.StripReverbReset", "1").Texts);
+        Assert.Contains("n/a", rig.Render("Voicemeeter.StripReverb", "1").Texts);
     }
 
     [Fact]
@@ -261,7 +261,7 @@ public class FamilyABTests
     {
         using var rig = new Rig();
         rig.Api.Floats["Strip[0].Delay"] = 0.5f;
-        await rig.Run("Voicemeeter.StripDelayDown", "1");
+        await rig.Turn("Voicemeeter.StripDelay", -1, "1");
         Assert.Equal(("Strip[0].Delay", 0f), rig.Api.Writes[^1]);
     }
 
@@ -271,9 +271,9 @@ public class FamilyABTests
         var api = FakeVoicemeeterApi.Potato();
         api.RunningType = 2;
         using var rig = new Rig(api);
-        await rig.Run("Voicemeeter.StripDelayUp", "1");
+        await rig.Turn("Voicemeeter.StripDelay", 1, "1");
         Assert.Empty(api.Writes);
-        Assert.Contains("n/a", rig.Render("Voicemeeter.StripDelayReset", "1").Texts);
+        Assert.Contains("n/a", rig.Render("Voicemeeter.StripDelay", "1").Texts);
     }
 
     [Fact]
@@ -281,7 +281,7 @@ public class FamilyABTests
     {
         using var rig = new Rig();
         rig.Api.Floats["Strip[0].Fx1"] = 9.5f;
-        await rig.Run("Voicemeeter.StripFx1Up", "1");
+        await rig.Turn("Voicemeeter.StripFx1", 1, "1");
         Assert.Equal(("Strip[0].Fx1", 10f), rig.Api.Writes[^1]);
     }
 
@@ -291,9 +291,9 @@ public class FamilyABTests
         var api = FakeVoicemeeterApi.Potato();
         api.RunningType = 2;
         using var rig = new Rig(api);
-        await rig.Run("Voicemeeter.StripFx1Up", "1");
+        await rig.Turn("Voicemeeter.StripFx1", 1, "1");
         Assert.Empty(api.Writes);
-        Assert.Contains("n/a", rig.Render("Voicemeeter.StripFx1Reset", "1").Texts);
+        Assert.Contains("n/a", rig.Render("Voicemeeter.StripFx1", "1").Texts);
     }
 
     [Fact]
@@ -301,7 +301,7 @@ public class FamilyABTests
     {
         using var rig = new Rig();
         rig.Api.Floats["Strip[0].Fx2"] = 0.5f;
-        await rig.Run("Voicemeeter.StripFx2Down", "1");
+        await rig.Turn("Voicemeeter.StripFx2", -1, "1");
         Assert.Equal(("Strip[0].Fx2", 0f), rig.Api.Writes[^1]);
     }
 
@@ -311,9 +311,9 @@ public class FamilyABTests
         var api = FakeVoicemeeterApi.Potato();
         api.RunningType = 2;
         using var rig = new Rig(api);
-        await rig.Run("Voicemeeter.StripFx2Down", "1");
+        await rig.Turn("Voicemeeter.StripFx2", -1, "1");
         Assert.Empty(api.Writes);
-        Assert.Contains("n/a", rig.Render("Voicemeeter.StripFx2Reset", "1").Texts);
+        Assert.Contains("n/a", rig.Render("Voicemeeter.StripFx2", "1").Texts);
     }
 
     [Fact]
@@ -321,7 +321,7 @@ public class FamilyABTests
     {
         using var rig = new Rig();
         rig.Api.Floats["Strip[0].Pan_x"] = 0.45f;
-        await rig.Run("Voicemeeter.StripPanXUp", "1");
+        await rig.Turn("Voicemeeter.StripPanX", 1, "1");
         Assert.Equal(("Strip[0].Pan_x", 0.5f), rig.Api.Writes[^1]);
     }
 
@@ -330,7 +330,7 @@ public class FamilyABTests
     {
         using var rig = new Rig();
         rig.Api.Floats["Strip[0].Pan_x"] = -0.45f;
-        await rig.Run("Voicemeeter.StripPanXDown", "1");
+        await rig.Turn("Voicemeeter.StripPanX", -1, "1");
         Assert.Equal(("Strip[0].Pan_x", -0.5f), rig.Api.Writes[^1]);
     }
 
@@ -339,7 +339,7 @@ public class FamilyABTests
     {
         using var rig = new Rig();
         rig.Api.Floats["Strip[0].Pan_x"] = 0.3f;
-        await rig.Run("Voicemeeter.StripPanXReset", "1");
+        await rig.Press("Voicemeeter.StripPanX", "1");
         Assert.Equal(("Strip[0].Pan_x", 0f), rig.Api.Writes[^1]);
     }
 
@@ -349,7 +349,7 @@ public class FamilyABTests
         // Global strip 1 is hardware on every edition: range is 0..1.
         using var rig = new Rig();
         rig.Api.Floats["Strip[0].Pan_y"] = 0.95f;
-        await rig.Run("Voicemeeter.StripPanYUp", "1");
+        await rig.Turn("Voicemeeter.StripPanY", 1, "1");
         Assert.Equal(("Strip[0].Pan_y", 1f), rig.Api.Writes[^1]);
     }
 
@@ -358,7 +358,7 @@ public class FamilyABTests
     {
         using var rig = new Rig();
         rig.Api.Floats["Strip[0].Pan_y"] = 0.05f;
-        await rig.Run("Voicemeeter.StripPanYDown", "1");
+        await rig.Turn("Voicemeeter.StripPanY", -1, "1");
         Assert.Equal(("Strip[0].Pan_y", 0f), rig.Api.Writes[^1]);
     }
 
@@ -368,7 +368,7 @@ public class FamilyABTests
         // Potato: 5 hardware inputs, so global strip 6 is the first virtual input: range is -0.5..0.5.
         using var rig = new Rig();
         rig.Api.Floats["Strip[5].Pan_y"] = 0.45f;
-        await rig.Run("Voicemeeter.StripPanYUp", "6");
+        await rig.Turn("Voicemeeter.StripPanY", 1, "6");
         Assert.Equal(("Strip[5].Pan_y", 0.5f), rig.Api.Writes[^1]);
     }
 
@@ -377,7 +377,7 @@ public class FamilyABTests
     {
         using var rig = new Rig();
         rig.Api.Floats["Strip[5].Pan_y"] = -0.45f;
-        await rig.Run("Voicemeeter.StripPanYDown", "6");
+        await rig.Turn("Voicemeeter.StripPanY", -1, "6");
         Assert.Equal(("Strip[5].Pan_y", -0.5f), rig.Api.Writes[^1]);
     }
 
@@ -389,10 +389,10 @@ public class FamilyABTests
         using var rig = new Rig();
         rig.Api.Floats["Strip[0].Pan_y"] = 0f;
         rig.Api.Floats["Strip[5].Pan_y"] = 0f;
-        await rig.Run("Voicemeeter.StripPanYReset", "1");
-        await rig.Run("Voicemeeter.StripPanYReset", "6");
-        Assert.DoesNotContain("n/a", rig.Render("Voicemeeter.StripPanYReset", "1").Texts);
-        Assert.DoesNotContain("n/a", rig.Render("Voicemeeter.StripPanYReset", "6").Texts);
+        await rig.Press("Voicemeeter.StripPanY", "1");
+        await rig.Press("Voicemeeter.StripPanY", "6");
+        Assert.DoesNotContain("n/a", rig.Render("Voicemeeter.StripPanY", "1").Texts);
+        Assert.DoesNotContain("n/a", rig.Render("Voicemeeter.StripPanY", "6").Texts);
     }
 
     [Fact]
@@ -401,7 +401,7 @@ public class FamilyABTests
         // Potato: 5 hardware inputs, so global strip 6 is the first virtual input -> Strip[5].
         using var rig = new Rig();
         rig.Api.Floats["Strip[5].EQGain1"] = 11.5f;
-        await rig.Run("Voicemeeter.StripEQGain1Up", "6");
+        await rig.Turn("Voicemeeter.StripEQGain1", 1, "6");
         Assert.Equal(("Strip[5].EQGain1", 12f), rig.Api.Writes[^1]);
     }
 
@@ -410,9 +410,9 @@ public class FamilyABTests
     {
         using var rig = new Rig();
         rig.Api.Floats["Strip[0].EQGain1"] = 0f;
-        await rig.Run("Voicemeeter.StripEQGain1Up", "1");
+        await rig.Turn("Voicemeeter.StripEQGain1", 1, "1");
         Assert.Empty(rig.Api.Writes);
-        Assert.Contains("n/a", rig.Render("Voicemeeter.StripEQGain1Reset", "1").Texts);
+        Assert.Contains("n/a", rig.Render("Voicemeeter.StripEQGain1", "1").Texts);
     }
 
     [Fact]
@@ -420,7 +420,7 @@ public class FamilyABTests
     {
         using var rig = new Rig();
         rig.Api.Floats["Strip[5].EQGain2"] = -11.5f;
-        await rig.Run("Voicemeeter.StripEQGain2Down", "6");
+        await rig.Turn("Voicemeeter.StripEQGain2", -1, "6");
         Assert.Equal(("Strip[5].EQGain2", -12f), rig.Api.Writes[^1]);
     }
 
@@ -429,7 +429,7 @@ public class FamilyABTests
     {
         using var rig = new Rig();
         rig.Api.Floats["Strip[5].EQGain3"] = 11.5f;
-        await rig.Run("Voicemeeter.StripEQGain3Up", "6");
+        await rig.Turn("Voicemeeter.StripEQGain3", 1, "6");
         Assert.Equal(("Strip[5].EQGain3", 12f), rig.Api.Writes[^1]);
     }
 
@@ -439,9 +439,9 @@ public class FamilyABTests
         var api = FakeVoicemeeterApi.Potato();
         api.RunningType = 2; // Banana
         using var rig = new Rig(api);
-        await rig.Run("Voicemeeter.StripEQGain3Up", "6");
+        await rig.Turn("Voicemeeter.StripEQGain3", 1, "6");
         Assert.Empty(api.Writes);
-        Assert.Contains("n/a", rig.Render("Voicemeeter.StripEQGain3Reset", "6").Texts);
+        Assert.Contains("n/a", rig.Render("Voicemeeter.StripEQGain3", "6").Texts);
     }
 
     // ---- Global strip numbering: hardware and virtual strips on Potato and Banana ----
@@ -453,7 +453,7 @@ public class FamilyABTests
     {
         using var rig = new Rig();
         rig.Api.Floats[param] = 5f;
-        await rig.Run("Voicemeeter.StripCompUp", strip);
+        await rig.Turn("Voicemeeter.StripComp", 1, strip);
         Assert.Equal((param, 6f), rig.Api.Writes[^1]);
     }
 
@@ -464,7 +464,7 @@ public class FamilyABTests
     {
         using var rig = new Rig();
         rig.Api.Floats[param] = 0f;
-        await rig.Run("Voicemeeter.StripEQGain1Up", strip);
+        await rig.Turn("Voicemeeter.StripEQGain1", 1, strip);
         Assert.Equal((param, 1f), rig.Api.Writes[^1]);
     }
 
@@ -477,7 +477,7 @@ public class FamilyABTests
         api.RunningType = 2; // Banana: 3 hardware inputs, 2 virtual
         api.Floats[param] = 5f;
         using var rig = new Rig(api);
-        await rig.Run("Voicemeeter.StripCompUp", strip);
+        await rig.Turn("Voicemeeter.StripComp", 1, strip);
         Assert.Equal((param, 6f), rig.Api.Writes[^1]);
     }
 
@@ -490,7 +490,7 @@ public class FamilyABTests
         api.RunningType = 2; // Banana
         api.Floats[param] = 0f;
         using var rig = new Rig(api);
-        await rig.Run("Voicemeeter.StripEQGain1Up", strip);
+        await rig.Turn("Voicemeeter.StripEQGain1", 1, strip);
         Assert.Equal((param, 1f), rig.Api.Writes[^1]);
     }
 }

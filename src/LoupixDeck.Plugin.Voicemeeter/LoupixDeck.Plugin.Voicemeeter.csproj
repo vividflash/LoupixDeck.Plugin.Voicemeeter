@@ -12,14 +12,14 @@
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
 
-    <Version>0.1.0</Version>
+    <Version>1.0.0</Version>
     <Authors>vividflash</Authors>
     <Description>Voicemeeter strip and bus controls for LoupixDeck.</Description>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- The host supplies the SDK assembly at runtime; never ship it. -->
-    <PackageReference Include="LoupixDeck.PluginSdk" Version="1.23.0">
+    <PackageReference Include="LoupixDeck.PluginSdk" Version="1.25.0">
       <ExcludeAssets>runtime</ExcludeAssets>
     </PackageReference>
   </ItemGroup>

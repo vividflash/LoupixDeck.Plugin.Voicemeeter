@@ -10,7 +10,7 @@ internal readonly record struct LevelSource(ChannelKind Kind, string ChannelText
 
 /// <summary>
 /// Finds the Voicemeeter channel a dial controls from its bound commands (right turn, left turn,
-/// press): any adjustment (Voicemeeter.StripGainUp(2,1)), toggle (Voicemeeter.BusMute(A1)) or
+/// press): any adjustment (Voicemeeter.StripGain(2,1)), toggle (Voicemeeter.BusMute(A1)) or
 /// level meter command. Strips meter post-fader, buses output, a Level command its own type.
 /// </summary>
 internal static partial class DialChannelParser
@@ -48,7 +48,7 @@ internal static partial class DialChannelParser
     {
         foreach (var spec in Adjustments.All)
         {
-            if (commandName == spec.UpName || commandName == spec.DownName || commandName == spec.ResetName) return spec.Kind;
+            if (commandName == spec.CommandName || commandName == spec.UpName || commandName == spec.DownName || commandName == spec.ResetName) return spec.Kind;
         }
 
         foreach (var spec in Toggles.All)

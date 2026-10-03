@@ -5,7 +5,7 @@ namespace LoupixDeck.Plugin.Voicemeeter.Actions;
 
 /// <summary>
 /// Family B: continuous parameters per strip or bus (original SingleBaseAdjustment subclasses).
-/// Append one AdjustmentSpec per action; the Down/Up/Reset commands and the dial menu entry are
+/// Append one AdjustmentSpec per action; the knob command, its migrations and the menu entry are
 /// generated from this list. Values are in API units (the original's scaleFactor is gone:
 /// original min/max divided by scaleFactor = API range).
 /// </summary>

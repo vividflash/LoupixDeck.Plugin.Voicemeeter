@@ -48,7 +48,7 @@ public class ServiceTests
         Assert.Equal(ConnectionState.Connected, rig.Vm.State);
         Assert.Equal(Edition.Banana, rig.Vm.Edition);
         Assert.Contains("Voicemeeter.StripMute", rig.Host.Refreshes);
-        Assert.Contains("Voicemeeter.StripGainReset", rig.Host.Refreshes);
+        Assert.Contains("Voicemeeter.StripGain", rig.Host.Refreshes);
         Assert.Equal(1, api.Logins); // no re-login
     }
 

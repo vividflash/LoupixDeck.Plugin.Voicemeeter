@@ -7,36 +7,41 @@ namespace LoupixDeck.Plugin.Voicemeeter.Tests;
 
 public class MenuTests
 {
-    private static MenuNode Root(ButtonTargets target, Edition e, Func<Channel, string?>? label = null) =>
-        Assert.Single(MenuBuilder.Build(target, e, Toggles.All, Adjustments.All, label ?? (_ => null)));
+    private static MenuNode Root(Edition e, Func<Channel, string?>? label = null) =>
+        Assert.Single(MenuBuilder.Build(e, Toggles.All, Adjustments.All, label ?? (_ => null)));
 
     [Fact]
     public void Standard_HasThreeStripsAndThreeBuses()
     {
-        var root = Root(ButtonTargets.TouchButton, Edition.Standard);
+        var root = Root(Edition.Standard);
         Assert.Equal("Voicemeeter", root.Name);
         Assert.Equal(["Strip 1", "Strip 2", "Strip 3"], root.Children[0].Children.Select(n => n.Name));
         Assert.Equal(["A1", "A2", "B1"], root.Children[1].Children.Select(n => n.Name));
     }
 
     [Fact]
-    public void Dial_GetsGroupFillingAllThreeSlots()
+    public void Knob_IsOneEntryWithTheKnobCommand()
     {
-        var root = Root(ButtonTargets.RotaryEncoder, Edition.Potato);
+        var root = Root(Edition.Potato);
         var b1 = root.Children[1].Children.Single(n => n.Name == "B1");
-        var group = b1.Children.Single(n => n.RotaryGroup != null).RotaryGroup!;
-        Assert.Equal("Voicemeeter.BusGainDown", group[RotaryAction.CounterClockwise].CommandName);
-        Assert.Equal("Voicemeeter.BusGainUp", group[RotaryAction.Clockwise].CommandName);
-        Assert.Equal("Voicemeeter.BusGainReset", group[RotaryAction.Press].CommandName);
-        Assert.Equal("B1", group[RotaryAction.Press].Parameters["Bus"]);
+        var gain = b1.Children.Single(n => n.Name == "Bus Gain");
+        Assert.Equal("Voicemeeter.BusGain", gain.CommandName);
+        Assert.Equal("B1", Assert.Single(gain.Parameters).Value);
+        Assert.Equal("Bus", gain.Parameters.Keys.Single());
+
+        var leaves = root.Children.SelectMany(g => g.Children).SelectMany(c => c.Children).ToList();
+        Assert.DoesNotContain(leaves, n => n.RotaryGroup != null);
+        var old = Adjustments.All.SelectMany(s => new[] { s.DownName, s.UpName, s.ResetName }).ToHashSet();
+        Assert.DoesNotContain(leaves, n => n.CommandName != null && old.Contains(n.CommandName));
+        foreach (var spec in Adjustments.All)
+            Assert.Contains(leaves, n => n.CommandName == spec.CommandName);
     }
 
     [Fact]
-    public void TouchTarget_HasNoDialGroup_ButHasMute()
+    public void Strip_HasMute()
     {
-        var root = Root(ButtonTargets.TouchButton, Edition.Banana);
+        var root = Root(Edition.Banana);
         var strip = root.Children[0].Children[0];
-        Assert.DoesNotContain(strip.Children, n => n.RotaryGroup != null);
         var mute = strip.Children.Single(n => n.CommandName == "Voicemeeter.StripMute");
         Assert.Equal("1", mute.Parameters["Strip"]);
     }
@@ -44,7 +49,7 @@ public class MenuTests
     [Fact]
     public void Labels_AppearInChannelNames()
     {
-        var root = Root(ButtonTargets.TouchButton, Edition.Potato, ch => ch.ApiIndex == 0 && ch.Kind == ChannelKind.Strip ? "Mic" : null);
+        var root = Root(Edition.Potato, ch => ch.ApiIndex == 0 && ch.Kind == ChannelKind.Strip ? "Mic" : null);
         Assert.Equal("Strip 1: Mic", root.Children[0].Children[0].Name);
     }
 
