@@ -62,6 +62,8 @@ internal sealed class ToggleCommand : VmCommandBase, IDisplayImageCommand
             CommandName = spec.CommandName,
             DisplayName = spec.DisplayName,
             Group = Group,
+            Icon = CommandLooks.Icon(spec.Name),
+            ButtonLayout = CommandLooks.SelfDrawn,
             Description = spec.Description,
             ParameterTemplate = template,
             Parameters = parameters
@@ -133,7 +135,7 @@ internal sealed class ToggleCommand : VmCommandBase, IDisplayImageCommand
             return Task.CompletedTask;
         }
 
-        ShowOverlay(ctx, $"{Vm.GetLabel(channel, Name)} {text} {(on ? "off" : "on")}");
+        ShowOverlay(ctx, $"{Vm.GetLabel(channel, Name)} {text} {(on ? Localization.Tr("off") : Localization.Tr("on"))}");
         return Task.CompletedTask;
     }
 

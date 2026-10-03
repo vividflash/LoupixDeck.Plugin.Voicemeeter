@@ -11,7 +11,7 @@
 
   <ItemGroup>
     <!-- The plugin excludes the SDK runtime asset; this exe needs it to load the plugin assembly. -->
-    <PackageReference Include="LoupixDeck.PluginSdk" Version="1.25.0" />
+    <PackageReference Include="LoupixDeck.PluginSdk" Version="1.28.0" />
   </ItemGroup>
 
   <ItemGroup>

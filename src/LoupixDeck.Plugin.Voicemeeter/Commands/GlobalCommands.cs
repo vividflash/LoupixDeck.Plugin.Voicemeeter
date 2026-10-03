@@ -20,6 +20,8 @@ internal sealed class VmGlobalCommand : VmCommandBase
             CommandName = Prefix + name,
             DisplayName = display,
             Group = Group,
+            Icon = CommandLooks.Icon(name),
+            ButtonLayout = CommandLooks.IconAndCaption,
             Description = description
         };
     }
@@ -54,6 +56,8 @@ internal sealed class VmLoadCommand : VmCommandBase
             CommandName = Prefix + "Load",
             DisplayName = "Load Settings",
             Group = Group,
+            Icon = CommandLooks.Icon("Load"),
+            ButtonLayout = CommandLooks.IconAndCaption,
             Description = "Loads a Voicemeeter settings file from Path",
             ParameterTemplate = "({Path})",
             Parameters = [new CommandParameter("Path", typeof(string))]

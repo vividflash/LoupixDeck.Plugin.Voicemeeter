@@ -30,6 +30,8 @@ internal sealed class RawCommand : VmCommandBase, IDisplayImageCommand
             CommandName = Prefix + "Raw",
             DisplayName = "Raw Command",
             Group = Group,
+            Icon = CommandLooks.Icon("Raw"),
+            ButtonLayout = CommandLooks.SelfDrawn,
             Description = "Toggles a Voicemeeter parameter, or runs a raw script; %toggle% inverts the current value",
             ParameterTemplate = "({Name},{OnColor},{OffColor},{Api})",
             Parameters =
@@ -89,7 +91,7 @@ internal sealed class RawCommand : VmCommandBase, IDisplayImageCommand
 
         var on = Vm.TryGetFloat(api, Name, out var current) && current >= 0.5f;
         if (!Vm.TrySetFloat(api, on ? 0f : 1f, out var error)) Fail(ctx, error, "Failed");
-        else ShowOverlay(ctx, $"{label} {(on ? "off" : "on")}");
+        else ShowOverlay(ctx, $"{label} {(on ? Localization.Tr("off") : Localization.Tr("on"))}");
         return Task.CompletedTask;
     }
 
@@ -108,7 +110,7 @@ internal sealed class RawCommand : VmCommandBase, IDisplayImageCommand
             if (IsScript(api))
             {
                 // A script has no single value to track; draw a static button (original: no state).
-                Render.Toggle(canvas, name, "script", false, offColor, offColor);
+                Render.Toggle(canvas, name, Localization.Tr("script"), false, offColor, offColor);
                 return true;
             }
 
@@ -271,6 +273,8 @@ internal sealed class RawAdjustmentStepCommand : RawAdjustmentCommandBase
             CommandName = Prefix + "Raw" + (up ? "Up" : "Down"),
             DisplayName = $"Raw Adjustment {(up ? "Up" : "Down")}",
             Group = Group,
+            Icon = CommandLooks.Icon("RawAdjustment"),
+            ButtonLayout = CommandLooks.IconAndCaption,
             Description = $"{(up ? "Raises" : "Lowers")} any Voicemeeter parameter by Step, clamped to [Min, Max]",
             ParameterTemplate = "({Step},{Min},{Max},{Api})",
             Parameters = Parameters()
@@ -297,6 +301,8 @@ internal sealed class RawAdjustmentResetCommand : RawAdjustmentCommandBase, IDis
             CommandName = Prefix + "RawReset",
             DisplayName = "Raw Adjustment Reset",
             Group = Group,
+            Icon = CommandLooks.Icon("RawAdjustment"),
+            ButtonLayout = CommandLooks.SelfDrawn,
             Description = "Sets any Voicemeeter parameter to 0 (clamped to [Min, Max]); on a touch button shows the live value",
             ParameterTemplate = "({Step},{Min},{Max},{Api})",
             Parameters = Parameters()

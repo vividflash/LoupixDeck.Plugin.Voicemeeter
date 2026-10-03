@@ -1,10 +1,11 @@
 {
   "id": "voicemeeter",
   "name": "Voicemeeter",
-  "version": "1.0.0",
-  "sdkVersion": "1.25.0",
+  "version": "1.1.0",
+  "sdkVersion": "1.28.0",
   "entryAssembly": "LoupixDeck.Plugin.Voicemeeter.dll",
   "platform": "Windows",
+  "iconFile": "icon.png",
   "author": "vividflash",
   "description": "Controls Voicemeeter (Standard, Banana, Potato): mute, routing, gain and effect knobs, level meters, raw commands."
 }

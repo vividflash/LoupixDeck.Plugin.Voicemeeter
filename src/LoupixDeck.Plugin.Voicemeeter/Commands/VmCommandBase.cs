@@ -37,7 +37,7 @@ internal abstract class VmCommandBase : IPluginCommand
         catch (Exception ex)
         {
             Log.Error($"{Name}: failed", ex);
-            ShowOverlay(ctx, "Failed");
+            ShowOverlay(ctx, Localization.Tr("Failed"));
         }
     }
 
@@ -48,7 +48,7 @@ internal abstract class VmCommandBase : IPluginCommand
     protected void Fail(CommandContext ctx, string message, string overlay = "n/a")
     {
         Log.Warn($"{Name}: {message}");
-        ShowOverlay(ctx, overlay);
+        ShowOverlay(ctx, Localization.Tr(overlay));
     }
 
     /// <summary>Resolves parameter <paramref name="index"/> as a channel of <paramref name="kind"/> in the running edition.</summary>
@@ -79,9 +79,9 @@ internal abstract class VmCommandBase : IPluginCommand
     {
         var reason = Vm.State switch
         {
-            ConnectionState.Connected => "n/a",
-            ConnectionState.NotInstalled => "not installed",
-            _ => "offline"
+            ConnectionState.Connected => Localization.Tr("n/a"),
+            ConnectionState.NotInstalled => Localization.Tr("not installed"),
+            _ => Localization.Tr("offline")
         };
         Render.Unavailable(canvas, title, reason);
         return true;

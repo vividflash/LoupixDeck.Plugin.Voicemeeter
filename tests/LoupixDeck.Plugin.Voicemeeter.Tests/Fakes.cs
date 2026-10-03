@@ -142,7 +142,8 @@ internal sealed class FakeHost : IPluginHost
     public IPluginLogger Logger => FakeLog;
     public IPluginSettings Settings { get; } = new FakeSettings();
     public string CurrentLanguage => "en";
-    public string Tr(string key) => key;
+    public Func<string, string>? Translate { get; set; }
+    public string Tr(string key) => Translate?.Invoke(key) ?? key;
     public FolderGridInfo FolderGrid => new(5, 3, 0);
     public DeviceInfo? ActiveDevice => null;
     public bool IsInExclusiveMode => false;

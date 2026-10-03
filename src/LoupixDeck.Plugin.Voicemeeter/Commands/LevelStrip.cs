@@ -244,7 +244,7 @@ internal sealed class LevelStripSession : ISideStripSession, ISegmentStripSessio
         c.DrawText(MeterRender.Fit(band.Name, c, FontSize, w), 0, groupTop, c.Width, rowH, Palette.Text, FontSize,
             TextHAlign.Center, TextVAlign.Middle, outlined: true, outlineColor: PluginColor.Black);
         MeterRender.Bar(c, side, barTop, w, BarH, band.Db, band.Muted, band.Gain);
-        var (text, color) = band.Muted ? ("muted", MeterRender.Red)
+        var (text, color) = band.Muted ? (Localization.Tr("muted"), MeterRender.Red)
             : band.Gain is { } g ? (ValueMath.Format(g, 1, "", true), Palette.Text)
             : ("", Palette.Text);
         if (text.Length > 0)

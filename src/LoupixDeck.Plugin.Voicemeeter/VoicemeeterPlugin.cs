@@ -10,7 +10,7 @@ namespace LoupixDeck.Plugin.Voicemeeter;
 /// Without Voicemeeter the plugin still loads; commands draw "not installed" / "offline" and the
 /// settings page shows the reason.
 /// </summary>
-public sealed class VoicemeeterPlugin : LoupixPlugin, IPluginSettingsPage, IMenuContributor
+public sealed class VoicemeeterPlugin : LoupixPlugin, IPluginSettingsPage, IMenuContributor, IPluginRequirements
 {
     private IPluginHost? _host;
     private VoicemeeterService? _vm;
@@ -21,8 +21,8 @@ public sealed class VoicemeeterPlugin : LoupixPlugin, IPluginSettingsPage, IMenu
     {
         Id = "voicemeeter",
         Name = "Voicemeeter",
-        Version = new Version(1, 0, 0),
-        SdkVersion = new Version(1, 25, 0),
+        Version = new Version(1, 1, 0),
+        SdkVersion = new Version(1, 28, 0),
         Author = "vividflash",
         Description = "Mute and gain controls for Voicemeeter, Banana and Potato strips and buses."
     };
@@ -30,6 +30,7 @@ public sealed class VoicemeeterPlugin : LoupixPlugin, IPluginSettingsPage, IMenu
     public override void Initialize(IPluginHost host)
     {
         _host = host;
+        Localization.SetHost(host);
         IVoicemeeterApi? api = null;
         string message;
         var installed = Edition.Unknown;
@@ -68,6 +69,9 @@ public sealed class VoicemeeterPlugin : LoupixPlugin, IPluginSettingsPage, IMenu
 
     public override IEnumerable<ISideStripProvider> GetSideStripProviders() => _sideStrips;
 
+    public override IEnumerable<DialPresetDescriptor> GetDialPresets() =>
+        _vm is { State: not ConnectionState.NotInstalled } vm ? DialPresets.Build(vm.MenuEdition, vm.PeekLabel) : [];
+
     public override IEnumerable<CommandMigration> GetCommandMigrations() => Adjustments.All.SelectMany(AdjustmentCommands.Migrations);
 
     public override IReadOnlyList<CommandGroupDescriptor> GetCommandGroups() =>
@@ -87,8 +91,31 @@ public sealed class VoicemeeterPlugin : LoupixPlugin, IPluginSettingsPage, IMenu
             return Task.FromResult<IReadOnlyList<MenuNode>>([]);
 
         var nodes = MenuBuilder.Build(vm.MenuEdition, Toggles.All, Adjustments.All,
-            vm.PeekLabel);
+            vm.PeekLabel, Localization.Tr);
         return Task.FromResult(nodes);
+    }
+
+    public IReadOnlyList<PluginRequirement> GetRequirements() => _vm == null ? [] : BuildRequirements(_vm.State);
+
+    /// <summary>
+    /// Only the install is a requirement. Voicemeeter not running (yet) is normal: the service
+    /// keeps probing and connects whenever it starts, so it is not reported.
+    /// </summary>
+    internal static IReadOnlyList<PluginRequirement> BuildRequirements(ConnectionState state)
+    {
+        var installed = state != ConnectionState.NotInstalled;
+        return
+        [
+            new PluginRequirement
+            {
+                Id = "voicemeeter-installed",
+                Name = "Voicemeeter",
+                IsMet = installed,
+                Message = installed ? null
+                    : OperatingSystem.IsWindows() ? $"Voicemeeter is not installed ({DllLocator.DllName} not found)." : "Voicemeeter is Windows only.",
+                InstallHint = installed || !OperatingSystem.IsWindows() ? null : "Download Voicemeeter from vb-audio.com/Voicemeeter and restart LoupixDeck."
+            }
+        ];
     }
 
     public IReadOnlyList<PluginSettingDescriptor> SettingsSchema =>

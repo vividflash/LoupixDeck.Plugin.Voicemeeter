@@ -90,7 +90,6 @@ internal static class MeterRender
 internal sealed class LevelCommand : VmCommandBase, IAnimatedDisplayCommand
 {
     public const string CommandName = Prefix + "Level";
-    private const string Title = "Level";
     private const int BarX = 6;
     private const int BarH = 18;
 
@@ -104,6 +103,8 @@ internal sealed class LevelCommand : VmCommandBase, IAnimatedDisplayCommand
         CommandName = CommandName,
         DisplayName = "Level Meter",
         Group = Group,
+        Icon = CommandLooks.Icon("Level"),
+        ButtonLayout = CommandLooks.SelfDrawn,
         Description = "Live level of a strip (PreFader, PostFader, PostMute) or bus (Output), in dB",
         ParameterTemplate = "({Channel},{Type})",
         Parameters =
@@ -138,7 +139,7 @@ internal sealed class LevelCommand : VmCommandBase, IAnimatedDisplayCommand
         {
             if (!Vm.IsConnected || !TryResolve(ctx, out var type, out var channel, out _))
             {
-                RenderUnavailable(canvas, Title);
+                RenderUnavailable(canvas, Localization.Tr("Level"));
                 return AnimationFrameInfo.Frame(HashCode.Combine(Vm.State, "unavailable"));
             }
 

@@ -11,25 +11,26 @@ internal static class MenuBuilder
 {
     public static IReadOnlyList<MenuNode> Build(Edition edition,
         IReadOnlyList<ToggleSpec> toggles, IReadOnlyList<AdjustmentSpec> adjustments,
-        Func<Channel, string?> label)
+        Func<Channel, string?> label, Func<string, string>? tr = null)
     {
+        tr ??= static s => s;
         var strips = new List<MenuNode>();
         for (var i = 0; i < EditionInfo.Strips(edition); i++)
         {
-            var node = ChannelNode(false, i, edition, toggles, adjustments, label);
+            var node = ChannelNode(false, i, edition, toggles, adjustments, label, tr);
             if (node != null) strips.Add(node);
         }
 
         var buses = new List<MenuNode>();
         for (var i = 0; i < EditionInfo.Buses(edition); i++)
         {
-            var node = ChannelNode(true, i, edition, toggles, adjustments, label);
+            var node = ChannelNode(true, i, edition, toggles, adjustments, label, tr);
             if (node != null) buses.Add(node);
         }
 
         var children = new List<MenuNode>();
-        if (strips.Count > 0) children.Add(new MenuNode { Name = "Strips", CommandName = string.Empty, Children = strips });
-        if (buses.Count > 0) children.Add(new MenuNode { Name = "Buses", CommandName = string.Empty, Children = buses });
+        if (strips.Count > 0) children.Add(new MenuNode { Name = tr("Strips"), CommandName = string.Empty, Children = strips });
+        if (buses.Count > 0) children.Add(new MenuNode { Name = tr("Buses"), CommandName = string.Empty, Children = buses });
         if (children.Count == 0) return [];
         return [new MenuNode { Name = VmCommandBase.Group, CommandName = string.Empty, Children = children }];
     }
@@ -50,7 +51,7 @@ internal static class MenuBuilder
     }
 
     private static MenuNode? ChannelNode(bool isBus, int apiIndex, Edition edition,
-        IReadOnlyList<ToggleSpec> toggles, IReadOnlyList<AdjustmentSpec> adjustments, Func<Channel, string?> label)
+        IReadOnlyList<ToggleSpec> toggles, IReadOnlyList<AdjustmentSpec> adjustments, Func<Channel, string?> label, Func<string, string> tr)
     {
         var items = new List<MenuNode>();
 
@@ -60,7 +61,7 @@ internal static class MenuBuilder
             var value = ParameterValue(spec.Kind, isBus, apiIndex, edition);
             if (value == null) continue;
             var p = new Dictionary<string, string>(StringComparer.Ordinal) { [VmParam.ParameterName(spec.Kind)] = value };
-            items.Add(new MenuNode { Name = spec.DisplayName, CommandName = spec.CommandName, Parameters = p });
+            items.Add(new MenuNode { Name = tr(spec.DisplayName), CommandName = spec.CommandName, Parameters = p });
         }
 
         foreach (var spec in toggles)
@@ -78,22 +79,27 @@ internal static class MenuBuilder
                         [channelParam] = value,
                         [sub.ParameterName] = n.ToString()
                     };
-                    items.Add(new MenuNode { Name = $"{spec.DisplayName} {sub.FieldPrefix}{n}", CommandName = spec.CommandName, Parameters = p });
+                    items.Add(new MenuNode { Name = $"{tr(spec.DisplayName)} {sub.FieldPrefix}{n}", CommandName = spec.CommandName, Parameters = p });
                 }
             }
             else
             {
                 var p = new Dictionary<string, string>(StringComparer.Ordinal) { [channelParam] = value };
-                items.Add(new MenuNode { Name = spec.DisplayName, CommandName = spec.CommandName, Parameters = p });
+                items.Add(new MenuNode { Name = tr(spec.DisplayName), CommandName = spec.CommandName, Parameters = p });
             }
         }
 
         if (items.Count == 0) return null;
 
+        return new MenuNode { Name = ChannelTitle(isBus, apiIndex, edition, label), CommandName = string.Empty, Children = items };
+    }
+
+    /// <summary>"Strip 1" / "A1", with the label set in Voicemeeter appended: "Strip 1: Mic".</summary>
+    internal static string ChannelTitle(bool isBus, int apiIndex, Edition edition, Func<Channel, string?> label)
+    {
         var name = isBus ? EditionInfo.BusNames(edition)[apiIndex] : $"Strip {apiIndex + 1}";
         var channel = new Channel(isBus ? ChannelKind.Bus : ChannelKind.Strip, apiIndex, name);
         var custom = label(channel);
-        var title = string.IsNullOrWhiteSpace(custom) || custom == name ? name : $"{name}: {custom}";
-        return new MenuNode { Name = title, CommandName = string.Empty, Children = items };
+        return string.IsNullOrWhiteSpace(custom) || custom == name ? name : $"{name}: {custom}";
     }
 }
