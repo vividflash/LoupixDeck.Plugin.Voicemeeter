@@ -85,7 +85,7 @@ One band per adjacent dial: channel name, a level bar (green/yellow/red zones, w
 
 ## Building
 
-Run `dotnet test` and `.\build.ps1` (this writes `dist\voicemeeter-<version>-windows.zip`). The plugin needs LoupixDeck 1.37.0 or newer.
+Run `.\build.ps1` (this writes `dist\voicemeeter-<version>-windows.zip`). The plugin needs LoupixDeck 1.37.0 or newer.
 
 ## License
 
