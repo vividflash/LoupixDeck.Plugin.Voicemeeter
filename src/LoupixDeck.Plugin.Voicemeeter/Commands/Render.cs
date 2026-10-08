@@ -29,6 +29,13 @@ internal static class Render
     public static void Toggle(IRenderCanvas c, string label, string name, bool on, PluginColor activeColor, PluginColor inactiveColor)
     {
         c.Clear(on ? activeColor : inactiveColor);
+        if (label.Length == 0)
+        {
+            // Channel folder: the channel is named once, the other keys only say what they switch.
+            c.DrawText(name, 2, 4, c.Width - 4, c.Height - 8, Palette.Text, 17f, TextHAlign.Center, TextVAlign.Middle, bold: true);
+            return;
+        }
+
         c.DrawText(label, 2, 4, c.Width - 4, c.Height / 2 - 4, Palette.Text, 14f, TextHAlign.Center, TextVAlign.Middle, bold: true);
         c.DrawText(name, 2, c.Height / 2, c.Width - 4, c.Height / 2 - 4, Palette.Text, 15f, TextHAlign.Center, TextVAlign.Middle);
     }
@@ -39,8 +46,16 @@ internal static class Render
         c.Clear(PluginColor.Black);
         var w = c.Width;
         var h = c.Height;
-        c.DrawText(label, 2, 2, w - 4, 22, Palette.Text, 13f, TextHAlign.Center, TextVAlign.Middle, bold: true);
-        c.DrawText(name, 2, 22, w - 4, 18, Palette.DimText, 11f, TextHAlign.Center, TextVAlign.Middle);
+        if (label.Length == 0)
+        {
+            c.DrawText(name, 2, 8, w - 4, 26, Palette.Text, 15f, TextHAlign.Center, TextVAlign.Middle, bold: true);
+        }
+        else
+        {
+            c.DrawText(label, 2, 2, w - 4, 22, Palette.Text, 13f, TextHAlign.Center, TextVAlign.Middle, bold: true);
+            c.DrawText(name, 2, 22, w - 4, 18, Palette.DimText, 11f, TextHAlign.Center, TextVAlign.Middle);
+        }
+
         c.DrawText(valueText, 2, 40, w - 4, 24, Palette.Text, 15f, TextHAlign.Center, TextVAlign.Middle, bold: true);
 
         var barX = 8;

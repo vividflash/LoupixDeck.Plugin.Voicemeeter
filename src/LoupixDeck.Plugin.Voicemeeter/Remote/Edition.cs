@@ -49,6 +49,19 @@ internal static class EditionInfo
         _ => 0
     };
 
+    /// <summary>Virtual inputs by the names of their Windows playback devices ("Voicemeeter Input", "Voicemeeter AUX Input", "Voicemeeter VAIO3 Input").</summary>
+    private static readonly string[] VirtualInputNames = ["Input", "AUX", "VAIO3"];
+
+    /// <summary>What a key shows for a channel without a label in Voicemeeter: the virtual input's own name, otherwise "Strip 1" / "A1".</summary>
+    public static string DefaultLabel(Channel channel, Edition e)
+    {
+        if (channel.Kind == ChannelKind.Bus) return channel.Name;
+        var virtualIndex = channel.ApiIndex - HardwareInputs(e);
+        return e != Edition.Unknown && virtualIndex >= 0 && virtualIndex < VirtualInputs(e)
+            ? VirtualInputNames[virtualIndex]
+            : channel.Name;
+    }
+
     /// <summary>Physical output buses A1..An.</summary>
     public static int ABuses(Edition e) => e switch
     {

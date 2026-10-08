@@ -63,6 +63,19 @@ internal sealed record AdjustmentSpec(string Name, string DisplayName, ChannelKi
     public string FormatValue(float v) => ValueMath.Format(v, Decimals, Unit, Signed);
 
     public string Text => ButtonText ?? Field;
+
+    /// <summary>Dial turn: <paramref name="ticks"/> steps of <paramref name="step"/> from the current value.</summary>
+    public static Func<float, float, float, float> Turn(int ticks, float step) =>
+        (current, min, max) => ValueMath.Step(current, ticks, step, min, max);
+
+    /// <summary>Dial press: the reset value.</summary>
+    public Func<float, float, float, float> Reset => (_, _, _) => ResetValue;
+}
+
+/// <summary>A value bar as read: values are read first and drawn later (a folder draws under the host's render lock).</summary>
+internal readonly record struct AdjustmentBar(string Label, string Name, string ValueText, float Fraction, PluginColor Color)
+{
+    public void Draw(IRenderCanvas canvas) => Render.Bar(canvas, Label, Name, ValueText, Fraction, Color);
 }
 
 /// <summary>Shared resolution, write path and value bar for the adjustment commands.</summary>
@@ -126,22 +139,13 @@ internal abstract class AdjustmentCommandBase : VmCommandBase
             return Task.CompletedTask;
         }
 
-        if (!TryResolve(ctx, out var param, out var channel, out var error))
+        if (!TryResolve(ctx, out _, out var channel, out var error))
         {
             Fail(ctx, error);
             return Task.CompletedTask;
         }
 
-        var (min, max) = Spec.RangeFor(channel, Vm.Edition);
-
-        if (!Vm.TryGetFloat(param, WatchName, out var current))
-        {
-            Fail(ctx, $"could not read {param}", "Failed");
-            return Task.CompletedTask;
-        }
-
-        var next = ValueMath.Clamp(compute(current, min, max), min, max);
-        if (next != current && !Vm.TrySetFloat(param, next, out error))
+        if (!TryWrite(Spec, Vm, channel, WatchName, compute, out var next, out error))
         {
             Fail(ctx, error, "Failed");
             return Task.CompletedTask;
@@ -151,29 +155,62 @@ internal abstract class AdjustmentCommandBase : VmCommandBase
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// The write itself, for a channel the spec applies to: reads the value under
+    /// <paramref name="watchName"/>, clamps <paramref name="compute"/>(current, min, max) to the
+    /// channel's range and writes it when it changed. Shared with the channel folder's knobs.
+    /// </summary>
+    internal static bool TryWrite(AdjustmentSpec spec, VoicemeeterService vm, Channel channel, string watchName,
+        Func<float, float, float, float> compute, out float next, out string error)
+    {
+        next = 0;
+        var param = channel.Param(spec.Field);
+        var (min, max) = spec.RangeFor(channel, vm.Edition);
+
+        if (!vm.TryGetFloat(param, watchName, out var current))
+        {
+            error = $"could not read {param}";
+            return false;
+        }
+
+        next = ValueMath.Clamp(compute(current, min, max), min, max);
+        if (next != current && !vm.TrySetFloat(param, next, out error)) return false;
+
+        error = string.Empty;
+        return true;
+    }
+
+    /// <summary>Reads what the value bar shows; false when the value cannot be read. Shared with the channel folder.</summary>
+    internal static bool TryReadBar(AdjustmentSpec spec, VoicemeeterService vm, Channel channel, string watchName, out AdjustmentBar bar)
+    {
+        bar = default;
+        if (!vm.TryGetFloat(channel.Param(spec.Field), watchName, out var value)) return false;
+
+        var (min, max) = spec.RangeFor(channel, vm.Edition);
+        var color = spec.BarColor;
+        if (spec.ColorByMute)
+        {
+            var muted = vm.TryGetFloat(channel.Param("Mute"), watchName, out var m) && m >= 0.5f;
+            color = muted ? Palette.Inactive
+                : value > 0 ? Palette.Danger
+                : channel.Kind == ChannelKind.Bus ? Palette.Inactive : Palette.Active;
+        }
+
+        bar = new AdjustmentBar(vm.GetLabel(channel, watchName), spec.Text, spec.FormatValue(value),
+            ValueMath.Fraction(value, min, max), color);
+        return true;
+    }
+
     /// <summary>Live value bar for a touch button.</summary>
     protected bool RenderBar(CommandContext ctx, IRenderCanvas canvas)
     {
         try
         {
-            if (!Vm.IsConnected || !TryResolve(ctx, out var param, out var channel, out _))
+            if (!Vm.IsConnected || !TryResolve(ctx, out _, out var channel, out _) ||
+                !TryReadBar(Spec, Vm, channel, Name, out var bar))
                 return RenderUnavailable(canvas, Spec.Text);
 
-            if (!Vm.TryGetFloat(param, Name, out var value))
-                return RenderUnavailable(canvas, Spec.Text);
-
-            var (min, max) = Spec.RangeFor(channel, Vm.Edition);
-            var color = Spec.BarColor;
-            if (Spec.ColorByMute)
-            {
-                var muted = Vm.TryGetFloat(channel.Param("Mute"), Name, out var m) && m >= 0.5f;
-                color = muted ? Palette.Inactive
-                    : value > 0 ? Palette.Danger
-                    : channel.Kind == ChannelKind.Bus ? Palette.Inactive : Palette.Active;
-            }
-
-            Render.Bar(canvas, Vm.GetLabel(channel, Name), Spec.Text, Spec.FormatValue(value),
-                ValueMath.Fraction(value, min, max), color);
+            bar.Draw(canvas);
             return true;
         }
         catch (Exception ex)
@@ -216,14 +253,14 @@ internal sealed class AdjustmentCommand : AdjustmentCommandBase, IAdjustmentComm
     public TimeSpan UpdateInterval => TimeSpan.FromSeconds(1);
 
     /// <summary>Touch button, macro, CLI: no direction, so it acts like the dial press.</summary>
-    protected override Task Run(CommandContext ctx) => Apply(ctx, (_, _, _) => Spec.ResetValue);
+    protected override Task Run(CommandContext ctx) => Apply(ctx, Spec.Reset);
 
     public async Task ApplyAdjustment(CommandContext ctx, int ticks)
     {
         try
         {
             var step = StepOf(ctx);
-            await Apply(ctx, (current, min, max) => ValueMath.Step(current, ticks, step, min, max)).ConfigureAwait(false);
+            await Apply(ctx, AdjustmentSpec.Turn(ticks, step)).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -289,7 +326,7 @@ internal sealed class AdjustmentStepCommand : AdjustmentCommandBase
     protected override Task Run(CommandContext ctx)
     {
         var step = StepOf(ctx);
-        return Apply(ctx, (current, min, max) => ValueMath.Step(current, _direction, step, min, max));
+        return Apply(ctx, AdjustmentSpec.Turn(_direction, step));
     }
 }
 
@@ -318,7 +355,7 @@ internal sealed class AdjustmentResetCommand : AdjustmentCommandBase, IDisplayIm
 
     public TimeSpan UpdateInterval => TimeSpan.FromSeconds(1);
 
-    protected override Task Run(CommandContext ctx) => Apply(ctx, (_, _, _) => Spec.ResetValue);
+    protected override Task Run(CommandContext ctx) => Apply(ctx, Spec.Reset);
 
     public bool RenderImage(CommandContext ctx, IRenderCanvas canvas) => RenderBar(ctx, canvas);
 }

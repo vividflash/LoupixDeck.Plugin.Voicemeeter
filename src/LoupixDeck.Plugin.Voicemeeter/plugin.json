@@ -1,7 +1,7 @@
 {
   "id": "voicemeeter",
   "name": "Voicemeeter",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "sdkVersion": "1.28.0",
   "entryAssembly": "LoupixDeck.Plugin.Voicemeeter.dll",
   "platform": "Windows",

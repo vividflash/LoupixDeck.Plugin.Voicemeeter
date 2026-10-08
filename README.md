@@ -78,7 +78,21 @@ The old `Voicemeeter.RawDown`, `RawUp` and `RawReset` still work but are no long
 
 ### Channel folder
 
-`Voicemeeter.ChannelFolder(Channel)`: touch button that opens a folder with every toggle of one channel, each key showing the live state. `Channel` is a strip number or a bus name (`A1`, `B2`). Keys are filled in the order of the toggle table above; on a device with fewer free keys than toggles the last ones are left out.
+`Voicemeeter.ChannelFolder(Channel)`: touch button that opens a folder for one channel. `Channel` is a strip number or a bus name (`A1`, `B2`).
+
+On a device with 3 rows of keys the outer columns belong to the knobs next to them, here on a 4x3 grid:
+
+| | | | |
+|---|---|---|---|
+| value of left knob 1 | toggle | toggle | value of right knob 1 |
+| value of left knob 2 | toggle | toggle | value of right knob 2 |
+| back | toggle | toggle | value of right knob 3 |
+
+- Knobs: turning changes the value by its default step, pressing resets it. The key beside the knob shows the value; touching it does nothing. Left knob 3 sits next to the back key and has no function.
+- Knob order (left 1, left 2, right 1, right 2, right 3): Gain, then the first four the channel has of Comp, Gate, Reverb, Delay, Bass, Mid, Treble (EQ Gain 1-3), Pan X, Pan Y, Fx1, Fx2. A bus only has Gain.
+- Toggles: Mute, Solo, A1, A2, B1, B2, then the rest in the order of the toggle table. If they do not all fit, the last toggle key is "More" and shows the next ones; the knobs stay.
+
+On other devices the folder is the plain toggle list in table order; toggles that do not fit are left out.
 
 ### Level meter
 

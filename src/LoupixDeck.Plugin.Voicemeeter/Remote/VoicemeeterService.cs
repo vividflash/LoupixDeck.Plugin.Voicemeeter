@@ -284,7 +284,7 @@ internal sealed class VoicemeeterService : IDisposable
         }
     }
 
-    /// <summary>Strip/bus label as set in Voicemeeter, or the channel's default name when empty.</summary>
+    /// <summary>Strip/bus label as set in Voicemeeter, or <see cref="EditionInfo.DefaultLabel"/> when empty.</summary>
     public string GetLabel(Channel channel, string commandName)
     {
         var param = channel.LabelParam;
@@ -297,7 +297,7 @@ internal sealed class VoicemeeterService : IDisposable
                 if (label != null) _strings[param] = label;
             }
 
-            return string.IsNullOrWhiteSpace(label) ? channel.Name : label.Trim();
+            return string.IsNullOrWhiteSpace(label) ? EditionInfo.DefaultLabel(channel, Edition) : label.Trim();
         }
     }
 

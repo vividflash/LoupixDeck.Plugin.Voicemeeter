@@ -52,16 +52,16 @@ internal static class Adjustments
         // Original VirtualInputEqGain1Adjustment: base(true, true, true, -12, 12) -> -12..12 dB, press = reset.
         // Takes the global strip number; virtual inputs only is an applicability restriction.
         new("StripEQGain1", "Strip EQ Gain 1", ChannelKind.VirtualInput, "EQGain1", Min: -12, Max: 12, Step: 1, ResetValue: 0)
-            { ButtonText = "EQ Gain 1" },
+            { ButtonText = "Bass" },
         // Original VirtualInputEqGain2Adjustment: base(true, true, true, -12, 12) -> -12..12 dB, press = reset.
         new("StripEQGain2", "Strip EQ Gain 2", ChannelKind.VirtualInput, "EQGain2", Min: -12, Max: 12, Step: 1, ResetValue: 0)
-            { ButtonText = "EQ Gain 2" },
+            { ButtonText = "Mid" },
         // Original VirtualInputEqGain3Adjustment: base(true, true, true, -12, 12) -> -12..12 dB, press = reset.
         // The original guards this one with `if (Remote.Version != VoicemeeterPotato) IsRealClass = false`
         // (same Potato-only guard as EQGain3's neighbours), but PORTING.md's table row 27 doesn't mark it
         // Potato-only. Followed the original source here; see report.
         new("StripEQGain3", "Strip EQ Gain 3", ChannelKind.VirtualInput, "EQGain3", Min: -12, Max: 12, Step: 1, ResetValue: 0)
-            { ButtonText = "EQ Gain 3", PotatoOnly = true },
+            { ButtonText = "Treble", PotatoOnly = true },
         // Stage 2 adjustments go here.
     ];
 }
