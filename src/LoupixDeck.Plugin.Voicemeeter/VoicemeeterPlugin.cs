@@ -21,7 +21,7 @@ public sealed class VoicemeeterPlugin : LoupixPlugin, IPluginSettingsPage, IMenu
     {
         Id = "voicemeeter",
         Name = "Voicemeeter",
-        Version = new Version(1, 1, 0),
+        Version = new Version(1, 2, 0),
         SdkVersion = new Version(1, 28, 0),
         Author = "vividflash",
         Description = "Mute and gain controls for Voicemeeter, Banana and Potato strips and buses."
@@ -72,7 +72,8 @@ public sealed class VoicemeeterPlugin : LoupixPlugin, IPluginSettingsPage, IMenu
     public override IEnumerable<DialPresetDescriptor> GetDialPresets() =>
         _vm is { State: not ConnectionState.NotInstalled } vm ? DialPresets.Build(vm.MenuEdition, vm.PeekLabel) : [];
 
-    public override IEnumerable<CommandMigration> GetCommandMigrations() => Adjustments.All.SelectMany(AdjustmentCommands.Migrations);
+    public override IEnumerable<CommandMigration> GetCommandMigrations() =>
+        Adjustments.All.SelectMany(AdjustmentCommands.Migrations).Concat(RawAdjustmentCommands.Migrations());
 
     public override IReadOnlyList<CommandGroupDescriptor> GetCommandGroups() =>
     [
@@ -91,7 +92,7 @@ public sealed class VoicemeeterPlugin : LoupixPlugin, IPluginSettingsPage, IMenu
             return Task.FromResult<IReadOnlyList<MenuNode>>([]);
 
         var nodes = MenuBuilder.Build(vm.MenuEdition, Toggles.All, Adjustments.All,
-            vm.PeekLabel, Localization.Tr);
+            vm.PeekLabel, Localization.Tr, touch: target.HasFlag(ButtonTargets.TouchButton));
         return Task.FromResult(nodes);
     }
 

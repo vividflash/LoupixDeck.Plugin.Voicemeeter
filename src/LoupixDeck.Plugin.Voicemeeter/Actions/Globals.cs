@@ -5,8 +5,8 @@ using LoupixDeck.PluginSdk;
 namespace LoupixDeck.Plugin.Voicemeeter.Actions;
 
 /// <summary>
-/// Family C: channel-less commands (Show, Eject, Load, Reset, Restart, Shutdown) and the raw
-/// API commands. Add command classes (derive from Commands.VmCommandBase) and yield them here.
+/// Family C: channel-less commands (Show, Eject, Load, Reset, Restart, Shutdown), the raw
+/// API commands and the channel folder. Add command classes (derive from Commands.VmCommandBase) and yield them here.
 /// </summary>
 internal static class Globals
 {
@@ -15,5 +15,6 @@ internal static class Globals
         foreach (var c in GlobalCommands.Create(vm, log)) yield return c;
         yield return new RawCommand(vm, log);
         foreach (var c in RawAdjustmentCommands.Create(vm, log)) yield return c;
+        yield return new ChannelFolderCommand(vm, log);
     }
 }

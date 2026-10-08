@@ -9,9 +9,9 @@ public enum Edition
 }
 
 /// <summary>
-/// Strip and bus layout per edition (from the Voicemeeter Remote API documentation):
-/// Standard 2 HW + 1 virtual input, buses A1 A2 B1; Banana 3 + 2, A1-A3 B1-B2;
-/// Potato 5 + 3, A1-A5 B1-B3. Strips are numbered hardware inputs first, then virtual
+/// Strip and bus layout per edition (VoicemeeterRemote.h, channel tables of VBVMR_GetLevel):
+/// Standard 2 HW + 1 virtual input, buses A1 B1 (its two hardware outputs A1 / A2 share the one
+/// bus A); Banana 3 + 2, A1-A3 B1-B2; Potato 5 + 3, A1-A5 B1-B3. Strips are numbered hardware inputs first, then virtual
 /// inputs; buses A (physical) first, then B (virtual).
 /// </summary>
 internal static class EditionInfo
@@ -52,7 +52,7 @@ internal static class EditionInfo
     /// <summary>Physical output buses A1..An.</summary>
     public static int ABuses(Edition e) => e switch
     {
-        Edition.Standard => 2,
+        Edition.Standard => 1,
         Edition.Banana => 3,
         Edition.Potato => 5,
         _ => 0

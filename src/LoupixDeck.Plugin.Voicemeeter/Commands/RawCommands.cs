@@ -175,7 +175,7 @@ internal sealed class RawCommand : VmCommandBase, IDisplayImageCommand
 }
 
 /// <summary>
-/// Shared resolution for the three raw-adjustment commands (original RawAdjustment). Unlike family
+/// Shared resolution for the raw-adjustment commands (original RawAdjustment). Unlike family
 /// B there is no fixed channel/spec: Api, Step, Min and Max all come from the command's own
 /// parameters at run time.
 /// </summary>
@@ -258,65 +258,9 @@ internal abstract class RawAdjustmentCommandBase : VmCommandBase
         ShowOverlay(ctx, $"{api} {ValueMath.Format(next, 2, string.Empty, signed: false)}");
         return Task.CompletedTask;
     }
-}
 
-/// <summary>Dial turn: Voicemeeter.RawUp(1,0,10,Strip[0].Comp) / Voicemeeter.RawDown(...).</summary>
-internal sealed class RawAdjustmentStepCommand : RawAdjustmentCommandBase
-{
-    private readonly int _direction;
-
-    public RawAdjustmentStepCommand(bool up, VoicemeeterService vm, IPluginLogger log) : base(vm, log)
-    {
-        _direction = up ? 1 : -1;
-        Descriptor = new CommandDescriptor
-        {
-            CommandName = Prefix + "Raw" + (up ? "Up" : "Down"),
-            DisplayName = $"Raw Adjustment {(up ? "Up" : "Down")}",
-            Group = Group,
-            Icon = CommandLooks.Icon("RawAdjustment"),
-            ButtonLayout = CommandLooks.IconAndCaption,
-            Description = $"{(up ? "Raises" : "Lowers")} any Voicemeeter parameter by Step, clamped to [Min, Max]",
-            ParameterTemplate = "({Step},{Min},{Max},{Api})",
-            Parameters = Parameters()
-        };
-    }
-
-    public override CommandDescriptor Descriptor { get; }
-
-    protected override Task Run(CommandContext ctx) =>
-        Apply(ctx, (current, step, min, max) => ValueMath.Step(current, _direction, step, min, max));
-}
-
-/// <summary>
-/// Dial press: resets to 0 (clamped to [Min, Max]) — the original RawAdjustment has no reset value
-/// of its own, so this mirrors family B's common default. On a touch button it draws the live value
-/// bar, like <see cref="AdjustmentCommand"/>.
-/// </summary>
-internal sealed class RawAdjustmentResetCommand : RawAdjustmentCommandBase, IDisplayImageCommand
-{
-    public RawAdjustmentResetCommand(VoicemeeterService vm, IPluginLogger log) : base(vm, log)
-    {
-        Descriptor = new CommandDescriptor
-        {
-            CommandName = Prefix + "RawReset",
-            DisplayName = "Raw Adjustment Reset",
-            Group = Group,
-            Icon = CommandLooks.Icon("RawAdjustment"),
-            ButtonLayout = CommandLooks.SelfDrawn,
-            Description = "Sets any Voicemeeter parameter to 0 (clamped to [Min, Max]); on a touch button shows the live value",
-            ParameterTemplate = "({Step},{Min},{Max},{Api})",
-            Parameters = Parameters()
-        };
-        vm.RegisterCommand(Descriptor.CommandName);
-    }
-
-    public override CommandDescriptor Descriptor { get; }
-
-    public TimeSpan UpdateInterval => TimeSpan.FromSeconds(1);
-
-    protected override Task Run(CommandContext ctx) => Apply(ctx, (_, _, min, max) => ValueMath.Clamp(0f, min, max));
-
-    public bool RenderImage(CommandContext ctx, IRenderCanvas canvas)
+    /// <summary>Live value bar for a touch button.</summary>
+    protected bool RenderBar(CommandContext ctx, IRenderCanvas canvas)
     {
         try
         {
@@ -337,12 +281,183 @@ internal sealed class RawAdjustmentResetCommand : RawAdjustmentCommandBase, IDis
     }
 }
 
+/// <summary>
+/// The raw knob: Voicemeeter.RawAdjustment(1,0,10,Strip[0].Comp). On a dial a turn changes the
+/// parameter by Step per tick and a press sets 0 (clamped to [Min, Max]) — the original
+/// RawAdjustment has no reset value of its own, so this mirrors family B's common default. On a
+/// touch button it draws the live value bar and a press resets, like <see cref="AdjustmentCommand"/>.
+/// </summary>
+internal sealed class RawAdjustmentCommand : RawAdjustmentCommandBase, IAdjustmentCommand, IDisplayImageCommand
+{
+    public const string CommandName = Prefix + "RawAdjustment";
+
+    public RawAdjustmentCommand(VoicemeeterService vm, IPluginLogger log) : base(vm, log)
+    {
+        Descriptor = new CommandDescriptor
+        {
+            CommandName = CommandName,
+            DisplayName = "Raw Adjustment",
+            Group = Group,
+            Icon = CommandLooks.Icon("RawAdjustment"),
+            ButtonLayout = CommandLooks.SelfDrawn,
+            Description = "Dial: turn changes any Voicemeeter parameter by Step, clamped to [Min, Max], press sets 0; " +
+                          "on a touch button shows the live value",
+            ParameterTemplate = "({Step},{Min},{Max},{Api})",
+            Parameters = Parameters()
+        };
+        vm.RegisterCommand(CommandName);
+    }
+
+    public override CommandDescriptor Descriptor { get; }
+
+    public TimeSpan UpdateInterval => TimeSpan.FromSeconds(1);
+
+    /// <summary>Touch button, macro, CLI: no direction, so it acts like the dial press.</summary>
+    protected override Task Run(CommandContext ctx) => Apply(ctx, (_, _, min, max) => ValueMath.Clamp(0f, min, max));
+
+    public async Task ApplyAdjustment(CommandContext ctx, int ticks)
+    {
+        try
+        {
+            await Apply(ctx, (current, step, min, max) => ValueMath.Step(current, ticks, step, min, max)).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"{Name}: failed", ex);
+            ShowOverlay(ctx, Localization.Tr("Failed"));
+        }
+    }
+
+    public Task ApplyReset(CommandContext ctx) => Execute(ctx);
+
+    /// <summary>Dial indicator: position in [Min, Max] plus the formatted value; null when offline or unreadable.</summary>
+    public AdjustmentValue? GetValue(CommandContext ctx)
+    {
+        try
+        {
+            if (!Vm.IsConnected || !TryResolve(ctx, out var api, out _, out var min, out var max, out _)) return null;
+            if (!Vm.TryGetFloat(api, Name, out var value)) return null;
+            return new AdjustmentValue(ValueMath.Fraction(value, min, max), ValueMath.Format(value, 2, string.Empty, signed: false));
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"{Name}: value failed", ex);
+            return null;
+        }
+    }
+
+    public bool RenderImage(CommandContext ctx, IRenderCanvas canvas) => RenderBar(ctx, canvas);
+}
+
+/// <summary>
+/// Pre-1.2 dial turn: Voicemeeter.RawUp(1,0,10,Strip[0].Comp) / Voicemeeter.RawDown(...). Hidden
+/// from the menu; stays registered for the same reasons as <see cref="AdjustmentStepCommand"/>.
+/// </summary>
+internal sealed class RawAdjustmentStepCommand : RawAdjustmentCommandBase
+{
+    private readonly int _direction;
+
+    public RawAdjustmentStepCommand(bool up, VoicemeeterService vm, IPluginLogger log) : base(vm, log)
+    {
+        _direction = up ? 1 : -1;
+        Descriptor = new CommandDescriptor
+        {
+            CommandName = Prefix + "Raw" + (up ? "Up" : "Down"),
+            DisplayName = $"Raw Adjustment {(up ? "Up" : "Down")}",
+            Group = Group,
+            Icon = CommandLooks.Icon("RawAdjustment"),
+            ButtonLayout = CommandLooks.IconAndCaption,
+            Description = $"{(up ? "Raises" : "Lowers")} any Voicemeeter parameter by Step, clamped to [Min, Max]",
+            ParameterTemplate = "({Step},{Min},{Max},{Api})",
+            Parameters = Parameters(),
+            HiddenFromMenu = true
+        };
+    }
+
+    public override CommandDescriptor Descriptor { get; }
+
+    protected override Task Run(CommandContext ctx) =>
+        Apply(ctx, (current, step, min, max) => ValueMath.Step(current, _direction, step, min, max));
+}
+
+/// <summary>Pre-1.2 dial press / value display: Voicemeeter.RawReset(1,0,10,Strip[0].Comp). Hidden, see <see cref="RawAdjustmentStepCommand"/>.</summary>
+internal sealed class RawAdjustmentResetCommand : RawAdjustmentCommandBase, IDisplayImageCommand
+{
+    public RawAdjustmentResetCommand(VoicemeeterService vm, IPluginLogger log) : base(vm, log)
+    {
+        Descriptor = new CommandDescriptor
+        {
+            CommandName = Prefix + "RawReset",
+            DisplayName = "Raw Adjustment Reset",
+            Group = Group,
+            Icon = CommandLooks.Icon("RawAdjustment"),
+            ButtonLayout = CommandLooks.SelfDrawn,
+            Description = "Sets any Voicemeeter parameter to 0 (clamped to [Min, Max]); on a touch button shows the live value",
+            ParameterTemplate = "({Step},{Min},{Max},{Api})",
+            Parameters = Parameters(),
+            HiddenFromMenu = true
+        };
+        vm.RegisterCommand(Descriptor.CommandName);
+    }
+
+    public override CommandDescriptor Descriptor { get; }
+
+    public TimeSpan UpdateInterval => TimeSpan.FromSeconds(1);
+
+    protected override Task Run(CommandContext ctx) => Apply(ctx, (_, _, min, max) => ValueMath.Clamp(0f, min, max));
+
+    public bool RenderImage(CommandContext ctx, IRenderCanvas canvas) => RenderBar(ctx, canvas);
+}
+
 internal static class RawAdjustmentCommands
 {
+    /// <summary>The raw knob, then its hidden pre-1.2 Down / Up / Reset.</summary>
     public static IEnumerable<IPluginCommand> Create(VoicemeeterService vm, IPluginLogger log)
     {
+        yield return new RawAdjustmentCommand(vm, log);
         yield return new RawAdjustmentStepCommand(up: false, vm, log);
         yield return new RawAdjustmentStepCommand(up: true, vm, log);
         yield return new RawAdjustmentResetCommand(vm, log);
+    }
+
+    /// <summary>
+    /// Moves pre-1.2 raw dials onto the raw knob, same two shapes as
+    /// <see cref="AdjustmentCommands.Migrations"/>. Ids are recorded in the user's config; never
+    /// change them.
+    /// </summary>
+    public static IEnumerable<CommandMigration> Migrations()
+    {
+        var parameters = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["Step"] = "{Step}",
+            ["Min"] = "{Min}",
+            ["Max"] = "{Max}",
+            ["Api"] = "{Api}"
+        };
+        const string down = VmCommandBase.Prefix + "RawDown";
+        const string up = VmCommandBase.Prefix + "RawUp";
+        yield return new CommandMigration
+        {
+            Id = "RawAdjustment-dial",
+            From = new Dictionary<RotaryAction, string>
+            {
+                [RotaryAction.CounterClockwise] = down,
+                [RotaryAction.Clockwise] = up,
+                [RotaryAction.Press] = VmCommandBase.Prefix + "RawReset"
+            },
+            To = RawAdjustmentCommand.CommandName,
+            Parameters = parameters
+        };
+        yield return new CommandMigration
+        {
+            Id = "RawAdjustment-turn",
+            From = new Dictionary<RotaryAction, string>
+            {
+                [RotaryAction.CounterClockwise] = down,
+                [RotaryAction.Clockwise] = up
+            },
+            To = RawAdjustmentCommand.CommandName,
+            Parameters = parameters
+        };
     }
 }

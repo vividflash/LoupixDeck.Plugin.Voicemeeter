@@ -40,6 +40,7 @@ internal static class CommandLooks
         ["Shutdown"] = 0xF0425,                           // power
         ["Raw"] = 0xF0169,                                // code-braces
         ["RawAdjustment"] = 0xF062E,                      // tune
+        ["ChannelFolder"] = 0xF024B,                      // folder
         ["Level"] = 0xF0128                               // chart-bar
     };
 

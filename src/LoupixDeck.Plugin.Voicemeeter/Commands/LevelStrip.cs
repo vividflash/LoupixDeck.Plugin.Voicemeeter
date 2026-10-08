@@ -10,13 +10,17 @@ internal readonly record struct LevelSource(ChannelKind Kind, string ChannelText
 
 /// <summary>
 /// Finds the Voicemeeter channel a dial controls from its bound commands (right turn, left turn,
-/// press): any adjustment (Voicemeeter.StripGain(2,1)), toggle (Voicemeeter.BusMute(A1)) or
-/// level meter command. Strips meter post-fader, buses output, a Level command its own type.
+/// press): any adjustment (Voicemeeter.StripGain(2,1)), toggle (Voicemeeter.BusMute(A1)), level
+/// meter or raw command (the Strip[i] / Bus[i] its Api parameter starts with). Strips meter
+/// post-fader, buses output, a Level command its own type.
 /// </summary>
 internal static partial class DialChannelParser
 {
     [GeneratedRegex(@"Voicemeeter\.(\w+)\(([^)]*)\)")]
     private static partial Regex CommandPattern();
+
+    [GeneratedRegex(@"^\s*(Strip|Bus)\[(\d+)\]", RegexOptions.IgnoreCase)]
+    private static partial Regex RawChannelPattern();
 
     public static LevelSource? FromRotary(SideStripRotary rotary)
     {
@@ -28,6 +32,12 @@ internal static partial class DialChannelParser
             {
                 var name = VmCommandBase.Prefix + m.Groups[1].Value;
                 var args = m.Groups[2].Value.Split(',');
+                if (name.StartsWith(RawPrefix, StringComparison.Ordinal))
+                {
+                    if (FromRawApi(args[^1], label) is { } raw) return raw;
+                    continue;
+                }
+
                 var channel = args[0].Trim();
                 if (channel.Length == 0) continue;
                 if (name == LevelCommand.CommandName)
@@ -42,6 +52,17 @@ internal static partial class DialChannelParser
         }
 
         return null;
+    }
+
+    private const string RawPrefix = VmCommandBase.Prefix + "Raw";
+
+    /// <summary>"Strip[0].Gain" is strip 1, "Bus[2].Mute" bus 3; anything else (a script, Command.*) has no channel.</summary>
+    private static LevelSource? FromRawApi(string api, string label)
+    {
+        var m = RawChannelPattern().Match(api);
+        if (!m.Success || !int.TryParse(m.Groups[2].Value, out var index)) return null;
+        var kind = m.Groups[1].Value.StartsWith("b", StringComparison.OrdinalIgnoreCase) ? ChannelKind.Bus : ChannelKind.Strip;
+        return new LevelSource(kind, (index + 1).ToString(System.Globalization.CultureInfo.InvariantCulture), DefaultType(kind), label);
     }
 
     private static ChannelKind? KindOf(string commandName)
@@ -90,7 +111,7 @@ internal sealed class LevelStripProvider(VoicemeeterService vm, IPluginSettings 
     public const string DefaultFallback = "1,A1,B1";
 
     public string Id => "voicemeeter.levels";
-    public string Title => "Voicemeeter Levels";
+    public string Title => Localization.Tr("Voicemeeter Levels");
 
     public ISideStripSession CreateSession(SideStripContext context) => new LevelStripSession(vm, settings, log, context);
 }

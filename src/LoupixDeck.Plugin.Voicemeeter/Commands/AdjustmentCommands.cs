@@ -228,7 +228,7 @@ internal sealed class AdjustmentCommand : AdjustmentCommandBase, IAdjustmentComm
         catch (Exception ex)
         {
             Log.Error($"{Name}: failed", ex);
-            ShowOverlay(ctx, "Failed");
+            ShowOverlay(ctx, Localization.Tr("Failed"));
         }
     }
 

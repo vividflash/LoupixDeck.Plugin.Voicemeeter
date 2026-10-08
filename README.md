@@ -70,10 +70,15 @@ The 0.x commands `...Down`, `...Up` and `...Reset` still work but are no longer 
 | Command | What it does |
 |---|---|
 | `Voicemeeter.Raw(Name,OnColor,OffColor,Api)` | If `Api` is a single parameter (no `=`, no `;`), toggles it 0/1. Otherwise runs `Api` as a `;`-separated script; any instruction may use `%toggle%` on the right of its `=`, which is replaced with the inverted current value of that instruction's own parameter. `Name` is the button label (falls back to `Api`); `OnColor`/`OffColor` are `#rrggbb`/`#rgb` colors for the toggle state, ignored for scripts |
-| `Voicemeeter.RawDown(Step,Min,Max,Api)` / `Voicemeeter.RawUp(Step,Min,Max,Api)` | Raises/lowers any `Api` parameter by `Step`, clamped to `[Min, Max]` (defaults: Step 1, Min 0, Max 10) |
-| `Voicemeeter.RawReset(Step,Min,Max,Api)` | Sets `Api` to 0, clamped to `[Min, Max]`; on a touch button shows the live value |
+| `Voicemeeter.RawAdjustment(Step,Min,Max,Api)` | Knob for any `Api` parameter: turning changes it by `Step`, clamped to `[Min, Max]` (defaults: Step 1, Min 0, Max 10), pressing sets 0 (clamped); the dial shows the value, a touch button shows it as a bar |
 
 `Api` is always the last parameter and may itself contain commas (it is rejoined from that position onward), since Voicemeeter scripts and file paths legitimately contain them.
+
+The old `Voicemeeter.RawDown`, `RawUp` and `RawReset` still work but are no longer listed. Dials that carry them (with `RawReset` or nothing on press) are moved to `Voicemeeter.RawAdjustment` on first start.
+
+### Channel folder
+
+`Voicemeeter.ChannelFolder(Channel)`: touch button that opens a folder with every toggle of one channel, each key showing the live state. `Channel` is a strip number or a bus name (`A1`, `B2`). Keys are filled in the order of the toggle table above; on a device with fewer free keys than toggles the last ones are left out.
 
 ### Level meter
 

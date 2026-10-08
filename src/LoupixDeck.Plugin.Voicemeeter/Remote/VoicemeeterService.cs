@@ -80,6 +80,13 @@ internal sealed class VoicemeeterService : IDisposable
     /// <summary>Raised (outside the lock) whenever <see cref="State"/> or <see cref="Edition"/> changes.</summary>
     public event Action? StateChanged;
 
+    /// <summary>
+    /// Raised (outside the lock) with a command name whenever that command's buttons are asked to
+    /// redraw: one of its watched values changed, or the connection did. For views the host does
+    /// not refresh by command name (an open folder).
+    /// </summary>
+    public event Action<string>? CommandRefreshed;
+
     public string Status => State switch
     {
         ConnectionState.NotInstalled => _loadMessage,
@@ -430,32 +437,34 @@ internal sealed class VoicemeeterService : IDisposable
             if (_levelLeases.Count == 0 && _levelSubscribers.Count == 0) return;
             if (!IsConnected || _api == null)
             {
+                // Subscribers are still ticked while offline, so a side strip blanks its bands.
                 _levels.Clear();
                 _levelLeases.Clear();
-                return;
             }
-
-            var now = Clock();
-            List<(int, int)>? expired = null;
-            foreach (var (key, stamp) in _levelLeases)
+            else
             {
-                if (now - stamp > LevelLeaseMs)
+                var now = Clock();
+                List<(int, int)>? expired = null;
+                foreach (var (key, stamp) in _levelLeases)
                 {
-                    (expired ??= []).Add(key);
-                    continue;
+                    if (now - stamp > LevelLeaseMs)
+                    {
+                        (expired ??= []).Add(key);
+                        continue;
+                    }
+
+                    float v = 0;
+                    if (Safe(() => _api.GetLevel(key.Type, key.Channel, out v), -1) == 0) _levels[key] = v;
+                    else _levels.Remove(key);
                 }
 
-                float v = 0;
-                if (Safe(() => _api.GetLevel(key.Type, key.Channel, out v), -1) == 0) _levels[key] = v;
-                else _levels.Remove(key);
-            }
-
-            if (expired != null)
-            {
-                foreach (var key in expired)
+                if (expired != null)
                 {
-                    _levelLeases.Remove(key);
-                    _levels.Remove(key);
+                    foreach (var key in expired)
+                    {
+                        _levelLeases.Remove(key);
+                        _levels.Remove(key);
+                    }
                 }
             }
 
@@ -498,6 +507,7 @@ internal sealed class VoicemeeterService : IDisposable
             try
             {
                 _refreshCommand(name);
+                CommandRefreshed?.Invoke(name);
             }
             catch (Exception ex)
             {

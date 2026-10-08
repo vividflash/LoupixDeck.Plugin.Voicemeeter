@@ -5,26 +5,27 @@ namespace LoupixDeck.Plugin.Voicemeeter.Commands;
 
 /// <summary>
 /// Builds the channel-centric picker menu from the spec lists: Voicemeeter > Strips / Buses >
-/// "1: Mic" > every toggle and adjustment that applies to that channel.
+/// "1: Mic" > every toggle and adjustment that applies to that channel, plus its level meter and
+/// folder. The raw commands address no channel and stay in the host's flat list of the group.
 /// </summary>
 internal static class MenuBuilder
 {
     public static IReadOnlyList<MenuNode> Build(Edition edition,
         IReadOnlyList<ToggleSpec> toggles, IReadOnlyList<AdjustmentSpec> adjustments,
-        Func<Channel, string?> label, Func<string, string>? tr = null)
+        Func<Channel, string?> label, Func<string, string>? tr = null, bool touch = true)
     {
         tr ??= static s => s;
         var strips = new List<MenuNode>();
         for (var i = 0; i < EditionInfo.Strips(edition); i++)
         {
-            var node = ChannelNode(false, i, edition, toggles, adjustments, label, tr);
+            var node = ChannelNode(false, i, edition, toggles, adjustments, label, tr, touch);
             if (node != null) strips.Add(node);
         }
 
         var buses = new List<MenuNode>();
         for (var i = 0; i < EditionInfo.Buses(edition); i++)
         {
-            var node = ChannelNode(true, i, edition, toggles, adjustments, label, tr);
+            var node = ChannelNode(true, i, edition, toggles, adjustments, label, tr, touch);
             if (node != null) buses.Add(node);
         }
 
@@ -51,7 +52,8 @@ internal static class MenuBuilder
     }
 
     private static MenuNode? ChannelNode(bool isBus, int apiIndex, Edition edition,
-        IReadOnlyList<ToggleSpec> toggles, IReadOnlyList<AdjustmentSpec> adjustments, Func<Channel, string?> label, Func<string, string> tr)
+        IReadOnlyList<ToggleSpec> toggles, IReadOnlyList<AdjustmentSpec> adjustments, Func<Channel, string?> label, Func<string, string> tr,
+        bool touch)
     {
         var items = new List<MenuNode>();
 
@@ -87,6 +89,20 @@ internal static class MenuBuilder
                 var p = new Dictionary<string, string>(StringComparer.Ordinal) { [channelParam] = value };
                 items.Add(new MenuNode { Name = tr(spec.DisplayName), CommandName = spec.CommandName, Parameters = p });
             }
+        }
+
+        // Meter and folder are touch-button only (their SupportedTargets); the caller leaves them out elsewhere.
+        if (touch)
+        {
+            var channel = isBus ? EditionInfo.BusNames(edition)[apiIndex] : (apiIndex + 1).ToString();
+            var meter = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["Channel"] = channel,
+                ["Type"] = isBus ? "Output" : "PostFader"
+            };
+            items.Add(new MenuNode { Name = tr("Level Meter"), CommandName = LevelCommand.CommandName, Parameters = meter });
+            var folder = new Dictionary<string, string>(StringComparer.Ordinal) { ["Channel"] = channel };
+            items.Add(new MenuNode { Name = tr("Channel Folder"), CommandName = ChannelFolderCommand.CommandName, Parameters = folder });
         }
 
         if (items.Count == 0) return null;
