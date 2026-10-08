@@ -89,7 +89,7 @@ internal sealed class ChannelFolder : FolderProviderBase
         var isBus = channel.Kind == ChannelKind.Bus;
         foreach (var spec in toggles)
         {
-            if (spec.PotatoOnly && edition != Edition.Potato) continue;
+            if (!spec.AvailableIn(edition)) continue;
             if (MenuBuilder.ParameterValue(spec.Kind, isBus, channel.ApiIndex, edition) == null) continue;
             if (spec.Sub is { } sub)
             {

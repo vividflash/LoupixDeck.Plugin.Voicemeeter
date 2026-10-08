@@ -27,8 +27,8 @@ All of these show the live on/off state on a touch button.
 | `Voicemeeter.StripPostFx1(<strip>)` | Hardware input | yes |
 | `Voicemeeter.StripPostFx2(<strip>)` | Hardware input | yes |
 | `Voicemeeter.BusMono(<bus>)` | Bus | |
-| `Voicemeeter.BusEQ(<bus>)` | Bus | |
-| `Voicemeeter.BusSel(<bus>)` | Bus | |
+| `Voicemeeter.BusEQ(<bus>)` | Bus | Banana, Potato |
+| `Voicemeeter.BusSel(<bus>)` | Bus | yes |
 
 ### Knobs
 

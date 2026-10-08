@@ -26,8 +26,17 @@ internal sealed record ToggleSpec(string Name, string DisplayName, ChannelKind K
     public PluginColor ActiveColor { get; init; } = Palette.Active;
     public PluginColor InactiveColor { get; init; } = Palette.Inactive;
 
-    /// <summary>Parameter only exists in Voicemeeter Potato; other editions draw "n/a".</summary>
-    public bool PotatoOnly { get; init; }
+    /// <summary>Smallest edition that has the parameter; smaller editions draw "n/a" and leave it out of menu and folder.</summary>
+    public Edition MinEdition { get; init; } = Edition.Standard;
+
+    /// <summary>Parameter only exists in Voicemeeter Potato.</summary>
+    public bool PotatoOnly
+    {
+        get => MinEdition == Edition.Potato;
+        init => MinEdition = value ? Edition.Potato : MinEdition;
+    }
+
+    public bool AvailableIn(Edition edition) => edition >= MinEdition;
 
     public SubChannelSpec? Sub { get; init; }
 
@@ -88,9 +97,11 @@ internal sealed class ToggleCommand : VmCommandBase, IDisplayImageCommand
             return false;
         }
 
-        if (_spec.PotatoOnly && Vm.Edition != Edition.Potato)
+        if (!_spec.AvailableIn(Vm.Edition))
         {
-            error = $"{_spec.DisplayName} needs Voicemeeter Potato";
+            error = _spec.PotatoOnly
+                ? $"{_spec.DisplayName} needs Voicemeeter Potato"
+                : $"{_spec.DisplayName} needs {EditionInfo.DisplayName(_spec.MinEdition)} or larger";
             return false;
         }
 

@@ -46,9 +46,9 @@ internal static class Toggles
         // bug); this port uses the correct Bus channel kind and count per PORTING.md.
         new("BusMono", "Bus Mono", ChannelKind.Bus, "Mono") { Description = "Toggles mono on an output bus" },
         // Original BusEqCommand (BusEQCommand.cs): Bus[i].EQ.on. Same strip-count bug as BusMono; corrected to Bus here.
-        new("BusEQ", "Bus EQ", ChannelKind.Bus, "EQ.on") { ButtonText = "EQ", Description = "Toggles the EQ on an output bus" },
+        new("BusEQ", "Bus EQ", ChannelKind.Bus, "EQ.on") { ButtonText = "EQ", MinEdition = Edition.Banana, Description = "Toggles the EQ on an output bus" },
         // Original BusSelCommand: Bus[i].Sel, active colour SelActive. Same strip-count bug as BusMono; corrected to Bus here.
-        new("BusSel", "Bus Sel", ChannelKind.Bus, "Sel") { ActiveColor = Palette.SelActive, Description = "Selects an output bus" },
+        new("BusSel", "Bus Sel", ChannelKind.Bus, "Sel") { ActiveColor = Palette.SelActive, PotatoOnly = true, Description = "Selects an output bus" },
         // Stage 2 toggles go here.
     ];
 }

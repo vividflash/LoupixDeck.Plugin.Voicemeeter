@@ -68,7 +68,7 @@ internal static class MenuBuilder
 
         foreach (var spec in toggles)
         {
-            if (spec.PotatoOnly && edition != Edition.Potato) continue;
+            if (!spec.AvailableIn(edition)) continue;
             var value = ParameterValue(spec.Kind, isBus, apiIndex, edition);
             if (value == null) continue;
             var channelParam = VmParam.ParameterName(spec.Kind);
