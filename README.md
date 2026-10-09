@@ -6,9 +6,9 @@ Requirements: Windows and Voicemeeter installed (the plugin loads `VoicemeeterRe
 
 ## Commands
 
-Strips (`<strip>`) are numbered from 1 across the whole edition (hardware inputs first, then virtual inputs) — the same number for every strip command, including the hardware/virtual-only ones. Buses (`<bus>`) take a number or a name (`A1`, `B2`).
+Strips (`<strip>`) are numbered from 1 across the whole edition, hardware inputs first, then virtual inputs. Buses (`<bus>`) take a number or a name (`A1`, `B2`).
 
-"Hardware input" / "virtual input" below is an applicability restriction, not a separate numbering: e.g. on Potato (5 hardware + 3 virtual), `Voicemeeter.StripEQGain1(6)` addresses the first virtual strip. Point the command at a strip of the wrong kind and it draws "n/a" and does nothing.
+"Hardware input" / "virtual input" below only restricts which strips the command works on; the numbering stays the same. On Potato (5 hardware + 3 virtual), `Voicemeeter.StripEQGain1(6)` addresses the first virtual strip. On a strip of the wrong kind the command draws "n/a" and does nothing.
 
 ### Toggles
 
