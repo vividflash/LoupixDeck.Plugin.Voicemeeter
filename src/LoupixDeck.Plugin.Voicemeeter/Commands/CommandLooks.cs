@@ -23,6 +23,7 @@ internal static class CommandLooks
         ["StripSolo"] = 0xF02CB,                          // headphones
         ["StripA"] = 0xF0B08, ["StripB"] = 0xF0B09,       // alpha-a-box, alpha-b-box
         ["StripMono"] = 0xF00F8, ["BusMono"] = 0xF00F8,   // call-merge
+        ["StripMC"] = 0xF0ED4,                            // account-voice-off
         ["StripPostReverb"] = 0xF095B, ["StripPostDelay"] = 0xF095B,
         ["StripPostFx1"] = 0xF095B, ["StripPostFx2"] = 0xF095B, // sine-wave
         ["BusEQ"] = 0xF0EA2,                              // equalizer

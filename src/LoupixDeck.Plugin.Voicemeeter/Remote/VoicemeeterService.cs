@@ -45,6 +45,8 @@ internal sealed class VoicemeeterService : IDisposable
     private readonly Dictionary<(int Type, int Channel), float> _levels = [];
     private readonly Dictionary<(int Type, int Channel), long> _levelLeases = [];
     private readonly List<Action> _levelSubscribers = [];
+    private readonly Dictionary<string, long> _lastRefresh = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _pendingRefresh = new(StringComparer.Ordinal);
     private CancellationTokenSource? _cts;
     private Task? _loop;
     private bool _loggedIn;
@@ -209,6 +211,11 @@ internal sealed class VoicemeeterService : IDisposable
 
         if (logLine != null) _log.Info(logLine);
         if (stateChanged) RaiseStateChanged();
+        lock (_sync)
+        {
+            if (_pendingRefresh.Count > 0) (toRefresh ??= new HashSet<string>(StringComparer.Ordinal)).UnionWith(_pendingRefresh);
+        }
+
         Refresh(toRefresh);
         PollLevels();
     }
@@ -499,10 +506,56 @@ internal sealed class VoicemeeterService : IDisposable
         _ => $"code {rc}"
     };
 
+    public const string RedrawRateKey = "redraw.perSecond";
+    public const int DefaultRedrawsPerSecond = 10;
+    public const int MaxRedrawsPerSecond = 20;
+
+    private int _redrawsPerSecond = DefaultRedrawsPerSecond;
+
+    /// <summary>Redraw requests per second for one command or level strip, kept within 1..<see cref="MaxRedrawsPerSecond"/>.</summary>
+    public int RedrawsPerSecond
+    {
+        get => Volatile.Read(ref _redrawsPerSecond);
+        set => Volatile.Write(ref _redrawsPerSecond, Math.Clamp(value, 1, MaxRedrawsPerSecond));
+    }
+
+    /// <summary>Reads <see cref="RedrawRateKey"/>; anything unreadable counts as the default.</summary>
+    public void ApplySettings(IPluginSettings settings)
+    {
+        var rate = settings.Get<double>(RedrawRateKey, DefaultRedrawsPerSecond);
+        RedrawsPerSecond = double.IsFinite(rate) ? (int)Math.Round(Math.Clamp(rate, 1, MaxRedrawsPerSecond)) : DefaultRedrawsPerSecond;
+    }
+
+    /// <summary>Shortest time between two redraw requests for the same command or level strip.</summary>
+    internal long RedrawMinMs => 1000 / RedrawsPerSecond;
+
+    /// <summary>
+    /// Asks for a redraw of each command, at most once per <see cref="RedrawMinMs"/>: a request
+    /// that comes sooner (fast knob turns) is held and sent by a later poll tick.
+    /// </summary>
     private void Refresh(HashSet<string>? commands)
     {
         if (commands == null) return;
-        foreach (var name in commands)
+        var due = new List<string>(commands.Count);
+        lock (_sync)
+        {
+            var now = Clock();
+            var minMs = RedrawMinMs;
+            foreach (var name in commands)
+            {
+                if (_lastRefresh.TryGetValue(name, out var last) && now - last < minMs)
+                {
+                    _pendingRefresh.Add(name);
+                    continue;
+                }
+
+                _lastRefresh[name] = now;
+                _pendingRefresh.Remove(name);
+                due.Add(name);
+            }
+        }
+
+        foreach (var name in due)
         {
             try
             {

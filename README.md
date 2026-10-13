@@ -22,6 +22,7 @@ All of these show the live on/off state on a touch button.
 | `Voicemeeter.StripA(<strip>,<n>)` | Strip, assigns to physical bus A1..A5 (count per edition) | |
 | `Voicemeeter.StripB(<strip>,<n>)` | Strip, assigns to virtual bus B1..B3 (count per edition) | |
 | `Voicemeeter.StripMono(<strip>)` | Hardware input | |
+| `Voicemeeter.StripMC(<strip>)` | Virtual input, the M.C (mute center) button | |
 | `Voicemeeter.StripPostReverb(<strip>)` | Hardware input | yes |
 | `Voicemeeter.StripPostDelay(<strip>)` | Hardware input | yes |
 | `Voicemeeter.StripPostFx1(<strip>)` | Hardware input | yes |
@@ -78,7 +79,7 @@ The old `Voicemeeter.RawDown`, `RawUp` and `RawReset` still work but are no long
 
 ### Channel folder
 
-`Voicemeeter.ChannelFolder(Channel)`: touch button that opens a folder for one channel. `Channel` is a strip number or a bus name (`A1`, `B2`).
+`Voicemeeter.ChannelFolder(Channel,LeftTop,LeftMiddle,LeftBottom,RightTop,RightMiddle,RightBottom)`: touch button that opens a folder for one channel. `Channel` is a strip number or a bus name (`A1`, `B2`). The six other parameters are optional dropdowns, one per dial, to choose which adjustment the dial carries (Gain, Comp, Gate, Reverb, Delay, Fx1, Fx2, PanX, PanY, Bass, Mid, Treble). `Default` keeps the order below; an adjustment the channel does not have also counts as `Default`. The dropdown texts are English only.
 
 On a device with 3 rows of keys the outer columns belong to the knobs next to them, here on a 4x3 grid:
 
@@ -88,9 +89,12 @@ On a device with 3 rows of keys the outer columns belong to the knobs next to th
 | value of left knob 2 | toggle | toggle | value of right knob 2 |
 | back | toggle | toggle | value of right knob 3 |
 
-- Knobs: turning changes the value by its default step, pressing resets it. The key beside the knob shows the value; touching it does nothing. Left knob 3 sits next to the back key and has no function.
-- Knob order (left 1, left 2, right 1, right 2, right 3): Gain, then the first four the channel has of Comp, Gate, Reverb, Delay, Bass, Mid, Treble (EQ Gain 1-3), Pan X, Pan Y, Fx1, Fx2. A bus only has Gain.
-- Toggles: Mute, Solo, A1, A2, B1, B2, then the rest in the order of the toggle table. If they do not all fit, the last toggle key is "More" and shows the next ones; the knobs stay.
+- Knobs: all six are used. Turning changes the value by its default step, pressing resets it. The key beside the knob shows the value; touching it does nothing. The side strips show each knob's name and value. Left knob 3 sits next to the back key, so it has no value key, only the side strip.
+- Order for knobs left on `Default` (left 1, left 2, right 1, right 2, right 3, left 3): Gain, then the first five the channel has of Comp, Gate, Reverb, Delay, Bass, Mid, Treble, Pan X, Pan Y, Fx1, Fx2. A bus only has Gain.
+- On Potato, while a bus has SEL on, the Gain knob of a strip sets the strip's gain for that bus ("Gain B1"). With no SEL on it is the strip's normal Gain.
+- Toggles: Mute, Solo, M.C, A1, A2, B1, B2, then the rest in the order of the toggle table. If they do not all fit, the last toggle key is "More" and shows the next ones; the knobs stay.
+
+Where LoupixDeck draws the side strips for the folder (a device with side strips, e.g. Loupedeck Live), the strips already show every knob's value, so the value keys are toggles too: Mute, Solo, Mono or M.C, A1..A5, B1..B3, then the rest, from the top-left key on. A virtual input on Potato fits on one page; "More" stays where the toggles still do not fit. The first folder opened after the plugin starts shows the value keys for a moment. A device without side strips (e.g. Loupedeck Live S) keeps the value keys.
 
 On other devices the folder is the plain toggle list in table order; toggles that do not fit are left out.
 
@@ -102,9 +106,11 @@ On other devices the folder is the plain toggle list in table order; toggles tha
 
 One band per adjacent dial: channel name, a level bar (green/yellow/red zones, white marker at the dial's gain on the same -60/+12 dB scale) and the gain value or "muted". Meters whatever Voicemeeter command (toggle, knob or Level) the dial next to it is bound to. Where a dial has no such command, it falls back to a fixed channel list from the `levels.stripChannels` plugin setting (default `1,A1,B1`; numbers are strips, `A1`..`B3` are buses).
 
+The plugin setting `redraw.perSecond` (1 to 20, default 10) limits how often the level strip, keys and dials are redrawn.
+
 ## Building
 
-Run `.\build.ps1` (this writes `dist\voicemeeter-<version>-windows.zip`). The plugin needs LoupixDeck 1.37.0 or newer.
+Run `.\build.ps1` (this writes `dist\voicemeeter-<version>-windows.zip`). The plugin needs LoupixDeck 1.42.0 or newer (the channel folder's side strips need it).
 
 ## License
 

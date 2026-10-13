@@ -34,6 +34,8 @@ internal static class Toggles
         // Original HardwareInputMonoCommand: Strip[i].Mono. Takes the global strip number; hardware
         // inputs only is an applicability restriction (draws "n/a" on a virtual strip).
         new("StripMono", "Strip Mono", ChannelKind.HardwareInput, "Mono") { Description = "Toggles mono on a hardware input strip" },
+        // Not in the original: Strip[i].MC, the M.C (mute center) button a virtual input has in place of Mono.
+        new("StripMC", "Strip M.C", ChannelKind.VirtualInput, "MC") { ButtonText = "M.C", Description = "Mutes the center (voice) of a virtual input strip" },
         // Original HardwareInputPostReverbCommand: Strip[i].PostReverb, hardware inputs only, Potato only.
         new("StripPostReverb", "Strip Post Reverb", ChannelKind.HardwareInput, "PostReverb") { PotatoOnly = true, Description = "Toggles the post-reverb send on a hardware input strip" },
         // Original HardwareInputPostDelayCommand: Strip[i].PostDelay, hardware inputs only, Potato only.

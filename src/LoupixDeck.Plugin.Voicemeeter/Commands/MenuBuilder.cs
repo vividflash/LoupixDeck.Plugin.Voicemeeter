@@ -5,7 +5,7 @@ namespace LoupixDeck.Plugin.Voicemeeter.Commands;
 
 /// <summary>
 /// Builds the channel-centric picker menu from the spec lists: Voicemeeter > Strips / Buses >
-/// "1: Mic" > every toggle and adjustment that applies to that channel, plus its level meter and
+/// "Mic" > every toggle and adjustment that applies to that channel, plus its level meter and
 /// folder. The raw commands address no channel and stay in the host's flat list of the group.
 /// </summary>
 internal static class MenuBuilder
@@ -110,12 +110,12 @@ internal static class MenuBuilder
         return new MenuNode { Name = ChannelTitle(isBus, apiIndex, edition, label), CommandName = string.Empty, Children = items };
     }
 
-    /// <summary>"Strip 1" / "A1", with the label set in Voicemeeter appended: "Strip 1: Mic".</summary>
+    /// <summary>The channel as the keys name it: the label set in Voicemeeter, otherwise <see cref="EditionInfo.DefaultLabel"/>.</summary>
     internal static string ChannelTitle(bool isBus, int apiIndex, Edition edition, Func<Channel, string?> label)
     {
-        var name = isBus ? EditionInfo.BusNames(edition)[apiIndex] : $"Strip {apiIndex + 1}";
-        var channel = new Channel(isBus ? ChannelKind.Bus : ChannelKind.Strip, apiIndex, name);
+        var kind = isBus ? ChannelKind.Bus : ChannelKind.Strip;
+        var channel = new Channel(kind, apiIndex, VmParam.UserName(kind, apiIndex + 1, edition));
         var custom = label(channel);
-        return string.IsNullOrWhiteSpace(custom) || custom == name ? name : $"{name}: {custom}";
+        return string.IsNullOrWhiteSpace(custom) ? EditionInfo.DefaultLabel(channel, edition) : custom.Trim();
     }
 }

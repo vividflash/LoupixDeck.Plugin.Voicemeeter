@@ -139,6 +139,7 @@ internal sealed class LevelStripSession : ISideStripSession, ISegmentStripSessio
     private readonly IDisposable _subscription;
     private Band[] _bands = [];
     private int _signature;
+    private long _lastChange = long.MinValue / 2;
     private bool _disposed;
 
     public LevelStripSession(VoicemeeterService vm, IPluginSettings settings, IPluginLogger log, SideStripContext context)
@@ -172,7 +173,13 @@ internal sealed class LevelStripSession : ISideStripSession, ISegmentStripSessio
     private void OnLevelTick()
     {
         if (_disposed) return;
-        if (Update()) StripChanged?.Invoke(this, EventArgs.Empty);
+        // The meter moves on almost every tick while sound plays; a tick that comes too soon is
+        // skipped and the next one shows the newer level.
+        var now = _vm.Clock();
+        if (now - _lastChange < _vm.RedrawMinMs) return;
+        if (!Update()) return;
+        _lastChange = now;
+        StripChanged?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>Re-reads every band; true when what the strip shows changed.</summary>

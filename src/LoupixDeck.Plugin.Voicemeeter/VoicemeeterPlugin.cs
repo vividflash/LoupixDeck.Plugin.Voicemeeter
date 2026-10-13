@@ -21,8 +21,8 @@ public sealed class VoicemeeterPlugin : LoupixPlugin, IPluginSettingsPage, IMenu
     {
         Id = "voicemeeter",
         Name = "Voicemeeter",
-        Version = new Version(1, 2, 2),
-        SdkVersion = new Version(1, 28, 0),
+        Version = new Version(1, 3, 0),
+        SdkVersion = new Version(1, 31, 0),
         Author = "vividflash",
         Description = "Mute and gain controls for Voicemeeter, Banana and Potato strips and buses."
     };
@@ -47,6 +47,7 @@ public sealed class VoicemeeterPlugin : LoupixPlugin, IPluginSettingsPage, IMenu
 
         host.Logger.Info($"Voicemeeter: {message}");
         _vm = new VoicemeeterService(api, message, host.Logger, RequestRefresh) { InstalledEdition = installed };
+        _vm.ApplySettings(host.Settings);
         _commands = BuildCommands(_vm, host.Logger);
         _sideStrips = Levels.CreateSideStrips(_vm, host.Logger, host.Settings).ToList();
         _vm.Start();
@@ -128,13 +129,22 @@ public sealed class VoicemeeterPlugin : LoupixPlugin, IPluginSettingsPage, IMenu
             Kind = PluginSettingKind.Heading,
             Description = "Connection to the Voicemeeter Remote API."
         },
-        .. Levels.Settings
+        .. Levels.Settings,
+        new PluginSettingDescriptor
+        {
+            Key = VoicemeeterService.RedrawRateKey,
+            Label = "Redraws per second",
+            Kind = PluginSettingKind.Number,
+            DefaultValue = VoicemeeterService.DefaultRedrawsPerSecond,
+            Description = "How often the level strip, keys and dials are redrawn at most, 1 to 20 per second. Lower values send less to the device."
+        }
     ];
 
     public IReadOnlyList<PluginSettingAction> SettingsActions => [];
 
     public void OnSettingsSaved()
     {
+        if (_host != null) _vm?.ApplySettings(_host.Settings);
     }
 
     public override void Shutdown()
