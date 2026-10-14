@@ -158,10 +158,11 @@ internal abstract class AdjustmentCommandBase : VmCommandBase
     /// <summary>
     /// The write itself, for a channel the spec applies to: reads the value under
     /// <paramref name="watchName"/>, clamps <paramref name="compute"/>(current, min, max) to the
-    /// channel's range and writes it when it changed. Shared with the channel folder's knobs.
+    /// channel's range and writes it when it changed. Shared with the channel folder's knobs, which
+    /// pass <paramref name="quiet"/> when the write must not redraw <paramref name="watchName"/>.
     /// </summary>
     internal static bool TryWrite(AdjustmentSpec spec, VoicemeeterService vm, Channel channel, string watchName,
-        Func<float, float, float, float> compute, out float next, out string error)
+        Func<float, float, float, float> compute, out float next, out string error, bool quiet = false)
     {
         next = 0;
         var param = channel.Param(spec.Field);
@@ -174,7 +175,7 @@ internal abstract class AdjustmentCommandBase : VmCommandBase
         }
 
         next = ValueMath.Clamp(compute(current, min, max), min, max);
-        if (next != current && !vm.TrySetFloat(param, next, out error)) return false;
+        if (next != current && !vm.TrySetFloat(param, next, out error, quiet ? watchName : null)) return false;
 
         error = string.Empty;
         return true;

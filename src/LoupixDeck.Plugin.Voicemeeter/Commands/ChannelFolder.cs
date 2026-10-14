@@ -260,8 +260,8 @@ internal sealed class ChannelFolder : FolderProviderBase, IFolderSideStripProvid
 
     private RotaryOverride Override(AdjustmentSpec spec) => new()
     {
-        OnLeft = () => Adjust(spec, AdjustmentSpec.Turn(-1, spec.Step)),
-        OnRight = () => Adjust(spec, AdjustmentSpec.Turn(1, spec.Step)),
+        OnLeft = () => Adjust(spec, AdjustmentSpec.Turn(-1, spec.Step), turn: true),
+        OnRight = () => Adjust(spec, AdjustmentSpec.Turn(1, spec.Step), turn: true),
         OnPress = () => Adjust(spec, spec.Reset),
         Label = spec.Text,
         GetValue = () => Value(spec)
@@ -545,9 +545,14 @@ internal sealed class ChannelFolder : FolderProviderBase, IFolderSideStripProvid
         return _vm.TrySetFloat(item.Param, on ? 0f : 1f, out error);
     });
 
-    /// <summary>Knob turn or press. The write redraws the folder: its value key or strip value watches the same parameter.</summary>
-    private Task Adjust(AdjustmentSpec spec, Func<float, float, float, float> compute) => Act((out string error) =>
-        AdjustmentCommandBase.TryWrite(spec, _vm, _channel, ChannelFolderCommand.CommandName, compute, out _, out error));
+    /// <summary>
+    /// Knob turn or press. The write redraws the folder: its value key or strip value watches the
+    /// same parameter. Not for a turn while the host draws the strips: the host repaints the dial's
+    /// value after a turn itself, so a folder redraw would only paint the strips twice.
+    /// </summary>
+    private Task Adjust(AdjustmentSpec spec, Func<float, float, float, float> compute, bool turn = false) => Act((out string error) =>
+        AdjustmentCommandBase.TryWrite(spec, _vm, _channel, ChannelFolderCommand.CommandName, compute, out _, out error,
+            quiet: turn && _sideStrips));
 
     /// <summary>Runs a key or knob write. Failures are logged, never thrown: the host does not catch a knob press.</summary>
     private Task Act(Write write)

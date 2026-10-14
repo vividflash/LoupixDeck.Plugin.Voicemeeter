@@ -320,8 +320,11 @@ internal sealed class VoicemeeterService : IDisposable
         }
     }
 
-    /// <summary>Writes a float parameter. The only float write path of the plugin.</summary>
-    public bool TrySetFloat(string param, float value, out string error)
+    /// <summary>
+    /// Writes a float parameter. The only float write path of the plugin. <paramref name="quietCommand"/>
+    /// is not redrawn for this write: it shows the new value without being asked.
+    /// </summary>
+    public bool TrySetFloat(string param, float value, out string error, string? quietCommand = null)
     {
         HashSet<string>? toRefresh = null;
         lock (_sync)
@@ -340,7 +343,11 @@ internal sealed class VoicemeeterService : IDisposable
             }
 
             _floats[param] = value;
-            if (_watchers.TryGetValue(param, out var set)) toRefresh = new HashSet<string>(set, StringComparer.Ordinal);
+            if (_watchers.TryGetValue(param, out var set))
+            {
+                toRefresh = new HashSet<string>(set, StringComparer.Ordinal);
+                if (quietCommand != null) toRefresh.Remove(quietCommand);
+            }
         }
 
         Refresh(toRefresh);
