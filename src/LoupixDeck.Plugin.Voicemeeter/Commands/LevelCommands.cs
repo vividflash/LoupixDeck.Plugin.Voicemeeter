@@ -22,7 +22,7 @@ internal static class LevelReader
     }
 }
 
-/// <summary>Meter colours and drawings (the original drew one flat bar; zones added here).</summary>
+/// <summary>Meter colours and drawings.</summary>
 internal static class MeterRender
 {
     public static readonly PluginColor Green = Palette.Active;

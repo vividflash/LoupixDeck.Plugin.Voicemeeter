@@ -15,8 +15,8 @@ public enum LevelType
 /// Maps strips and buses to VBVMR_GetLevel channel indices and converts levels to dB.
 /// Input levels (types 0-2): 2 channels per hardware strip, then 8 per virtual strip.
 /// Output levels (type 3): 8 channels per bus. Standard: 12 in / 16 out, Banana 22 / 40,
-/// Potato 34 / 64. The original plugin took a raw channel index; this port addresses the
-/// strip or bus and meters the loudest of its channels.
+/// Potato 34 / 64. Levels are addressed by strip or bus; the loudest of its
+/// channels is metered.
 /// </summary>
 internal static class LevelMap
 {

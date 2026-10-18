@@ -21,7 +21,7 @@ public sealed class VoicemeeterPlugin : LoupixPlugin, IPluginSettingsPage, IMenu
     {
         Id = "voicemeeter",
         Name = "Voicemeeter",
-        Version = new Version(1, 3, 0),
+        Version = new Version(1, 3, 2),
         SdkVersion = new Version(1, 31, 0),
         Author = "vividflash",
         Description = "Mute and gain controls for Voicemeeter, Banana and Potato strips and buses."
@@ -53,7 +53,7 @@ public sealed class VoicemeeterPlugin : LoupixPlugin, IPluginSettingsPage, IMenu
         _vm.Start();
     }
 
-    /// <summary>The single registration point: one list per action family (see docs/PORTING.md).</summary>
+    /// <summary>The single registration point: one list per action family.</summary>
     internal static List<IPluginCommand> BuildCommands(VoicemeeterService vm, IPluginLogger log)
     {
         var commands = new List<IPluginCommand>();

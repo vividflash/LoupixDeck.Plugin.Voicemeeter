@@ -1,5 +1,4 @@
-# Builds the plugin in Release and packs dist\<id>-<version>-<platform>.zip (e.g. voicemeeter-1.1.0-windows.zip,
-# the naming of the LoupixDeck plugin release workflow) plus a matching .sha256 file.
+# Builds the plugin in Release and packs dist\<id>-<version>-<platform>.zip (e.g. voicemeeter-<version>-windows.zip) plus a matching .sha256 file.
 # Layout matches the LoupixDeck plugin release workflow: plugin.json plus every
 # build output at the zip root, minus *.pdb, *.runtimeconfig.json and the SDK dll
 # (the host supplies LoupixDeck.PluginSdk.dll itself).

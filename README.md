@@ -53,7 +53,7 @@ All of these show the live on/off state on a touch button.
 
 In the command menu: Voicemeeter > Strips (or Buses) > channel > e.g. "Strip Gain". A dial can keep a different command on press, e.g. `Voicemeeter.StripMute`.
 
-The 0.x commands `...Down`, `...Up` and `...Reset` still work but are no longer listed. Dials that carry them (with `...Reset` or nothing on press) are moved to the new command on first start.
+Older commands `...Down`, `...Up` and `...Reset` still work but are no longer listed. Dials that carry them (with `...Reset` or nothing on press) are moved to the new command on first start.
 
 ### Globals
 
@@ -62,9 +62,9 @@ The 0.x commands `...Down`, `...Up` and `...Reset` still work but are no longer 
 | `Voicemeeter.Show` | Shows the Voicemeeter window if minimized |
 | `Voicemeeter.Eject` | Ejects the recorder cassette |
 | `Voicemeeter.Load(Path)` | Loads a Voicemeeter settings file from `Path` |
-| `Voicemeeter.Reset` | Resets ALL Voicemeeter configuration to default — affects the whole Voicemeeter |
-| `Voicemeeter.Restart` | Restarts the Voicemeeter audio engine, brief audio dropout — affects the whole Voicemeeter |
-| `Voicemeeter.Shutdown` | Shuts down Voicemeeter — affects the whole Voicemeeter |
+| `Voicemeeter.Reset` | Resets ALL Voicemeeter configuration to default, affects the whole Voicemeeter |
+| `Voicemeeter.Restart` | Restarts the Voicemeeter audio engine, brief audio dropout, affects the whole Voicemeeter |
+| `Voicemeeter.Shutdown` | Shuts down Voicemeeter, affects the whole Voicemeeter |
 
 ### Raw commands
 

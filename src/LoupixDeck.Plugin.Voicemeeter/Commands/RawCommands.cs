@@ -5,11 +5,9 @@ using LoupixDeck.PluginSdk;
 namespace LoupixDeck.Plugin.Voicemeeter.Commands;
 
 /// <summary>
-/// Toggles a single API parameter, or runs a ";"-separated Voicemeeter script (original
-/// RawCommand). A single parameter (no "=" and no ";") just inverts its current 0/1 value, like the
-/// original's plain toggle. A script may contain "%toggle%" anywhere on the right of an "="; it is
-/// replaced with the inverted current value of the instruction's target parameter (original
-/// RawCommand.cs lines 205-261).
+/// Toggles a single API parameter, or runs a ";"-separated Voicemeeter script.
+/// A single parameter (no "=" and no ";") just inverts its current 0/1 value. A script may contain
+/// "%toggle%" anywhere on the right of an "="; it is replaced with the inverted current value of the instruction's target parameter.
 /// </summary>
 /// <remarks>
 /// LoupixDeck splits a command's positional parameters on every "," in the persisted string
@@ -17,7 +15,7 @@ namespace LoupixDeck.Plugin.Voicemeeter.Commands;
 /// commas typed into a plugin's text fields (only two built-in commands, LaunchApp and OpenUrl,
 /// special-case that via <c>CommandParameterEncoding</c>). Voicemeeter scripts legitimately contain
 /// commas, so Api is declared LAST and <see cref="Fields"/> rejoins everything from that position
-/// onward with "," — the same trick <c>VmLoadCommand</c> uses for file paths. This is lossless for
+/// onward with "," (the same trick <c>VmLoadCommand</c> uses for file paths). This is lossless for
 /// ordinary values; it only loses information for a segment that was empty or pure whitespace
 /// between two commas, which <c>GetParameters</c> already trims/drops before the plugin ever sees it.
 /// </remarks>
@@ -283,8 +281,7 @@ internal abstract class RawAdjustmentCommandBase : VmCommandBase
 
 /// <summary>
 /// The raw knob: Voicemeeter.RawAdjustment(1,0,10,Strip[0].Comp). On a dial a turn changes the
-/// parameter by Step per tick and a press sets 0 (clamped to [Min, Max]) — the original
-/// RawAdjustment has no reset value of its own, so this mirrors family B's common default. On a
+/// parameter by Step per tick and a press sets 0 (clamped to [Min, Max]), the same default as the other knob commands. On a
 /// touch button it draws the live value bar and a press resets, like <see cref="AdjustmentCommand"/>.
 /// </summary>
 internal sealed class RawAdjustmentCommand : RawAdjustmentCommandBase, IAdjustmentCommand, IDisplayImageCommand
@@ -350,7 +347,7 @@ internal sealed class RawAdjustmentCommand : RawAdjustmentCommandBase, IAdjustme
 }
 
 /// <summary>
-/// Pre-1.2 dial turn: Voicemeeter.RawUp(1,0,10,Strip[0].Comp) / Voicemeeter.RawDown(...). Hidden
+/// Legacy dial turn: Voicemeeter.RawUp(1,0,10,Strip[0].Comp) / Voicemeeter.RawDown(...). Hidden
 /// from the menu; stays registered for the same reasons as <see cref="AdjustmentStepCommand"/>.
 /// </summary>
 internal sealed class RawAdjustmentStepCommand : RawAdjustmentCommandBase
@@ -421,7 +418,7 @@ internal static class RawAdjustmentCommands
     }
 
     /// <summary>
-    /// Moves pre-1.2 raw dials onto the raw knob, same two shapes as
+    /// Moves legacy raw dials onto the raw knob, same two shapes as
     /// <see cref="AdjustmentCommands.Migrations"/>. Ids are recorded in the user's config; never
     /// change them.
     /// </summary>

@@ -293,7 +293,7 @@ internal sealed class AdjustmentCommand : AdjustmentCommandBase, IAdjustmentComm
 }
 
 /// <summary>
-/// Pre-1.0 dial turn: Voicemeeter.StripGainUp(1) / Voicemeeter.StripGainDown(1,0.5). Hidden from
+/// Legacy dial turn: Voicemeeter.StripGainUp(1) / Voicemeeter.StripGainDown(1,0.5). Hidden from
 /// the menu; stays registered because the host only migrates a dial whose old commands still
 /// exist, and for bindings a migration does not touch (macros, buttons, mixed dials).
 /// </summary>
@@ -373,7 +373,7 @@ internal static class AdjustmentCommands
     }
 
     /// <summary>
-    /// Moves pre-1.0 dials onto the knob command: Down/Up/Reset on turn/turn/press, and Down/Up
+    /// Moves legacy dials onto the knob command: Down/Up/Reset on turn/turn/press, and Down/Up
     /// with nothing on press. The host leaves any other dial alone (e.g. a different command on
     /// press). Ids are recorded in the user's config; never change them.
     /// </summary>

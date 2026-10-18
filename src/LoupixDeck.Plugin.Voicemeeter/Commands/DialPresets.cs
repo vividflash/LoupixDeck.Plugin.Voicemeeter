@@ -41,7 +41,7 @@ internal static class DialPresets
         return new DialPresetDescriptor
         {
             Id = isBus ? $"bus-{value}-gain-mute" : $"strip-{value}-gain-mute",
-            Name = $"{MenuBuilder.ChannelTitle(isBus, apiIndex, edition, label)} – Gain + Mute",
+            Name = $"{MenuBuilder.ChannelTitle(isBus, apiIndex, edition, label)} - Gain + Mute",
             Glyph = VolumeHigh,
             Actions = new Dictionary<RotaryAction, MenuCommandRef>
             {

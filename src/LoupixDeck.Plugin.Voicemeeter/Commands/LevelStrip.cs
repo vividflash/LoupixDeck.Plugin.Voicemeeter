@@ -265,7 +265,7 @@ internal sealed class LevelStripSession : ISideStripSession, ISegmentStripSessio
 
         if (!band.Has)
         {
-            c.DrawText("–", 0, groupTop, c.Width, rowH, Palette.DimText, FontSize, TextHAlign.Center, TextVAlign.Middle);
+            c.DrawText("-", 0, groupTop, c.Width, rowH, Palette.DimText, FontSize, TextHAlign.Center, TextVAlign.Middle);
             return;
         }
 

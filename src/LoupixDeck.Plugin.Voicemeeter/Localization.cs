@@ -3,7 +3,7 @@ using LoupixDeck.PluginSdk;
 namespace LoupixDeck.Plugin.Voicemeeter;
 
 /// <summary>
-/// Thin wrapper around <see cref="IPluginHost.Tr"/> for texts the plugin draws or flashes itself
+/// Wrapper around <see cref="IPluginHost.Tr"/> for texts the plugin draws or flashes itself
 /// (button captions, dial overlays, menu titles built from parts). Descriptor texts that are fixed
 /// strings (display names, descriptions, settings, requirements) need no call: the host looks
 /// them up in strings.&lt;code&gt;.json by their exact English text.
