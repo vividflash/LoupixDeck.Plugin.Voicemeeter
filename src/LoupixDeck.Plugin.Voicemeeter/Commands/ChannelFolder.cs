@@ -90,7 +90,7 @@ internal sealed class ChannelFolderCommand : VmCommandBase
         }
 
         var picks = ctx.Parameters.Skip(1).Take(KnobParameters.Length).ToArray();
-        ctx.Host.OpenFolder(new ChannelFolder(channel, Vm.Edition, Toggles.All, Adjustments.All, Vm, ctx.Host, Log, picks, _stripDevices));
+        ctx.Host.OpenFolder(new ChannelFolder(channel, ctx.Parameters[0], Vm.Edition, Toggles.All, Adjustments.All, Vm, ctx.Host, Log, picks, _stripDevices));
         return Task.CompletedTask;
     }
 }
@@ -161,19 +161,15 @@ internal sealed class ChannelFolder : FolderProviderBase, IFolderSideStripProvid
 
     private delegate bool Write(out string error);
 
-    private readonly Channel _channel;
-    private readonly Edition _edition;
+    /// <summary>The channel as the user wrote it; resolved again when the edition changes.</summary>
+    private readonly string _channelText;
+    private readonly IReadOnlyList<ToggleSpec> _toggleSpecs;
+    private readonly IReadOnlyList<AdjustmentSpec> _adjustmentSpecs;
+    private readonly IReadOnlyList<string?>? _picks;
+    private readonly object _rebuild = new();
     private readonly VoicemeeterService _vm;
     private readonly IPluginHost _host;
     private readonly IPluginLogger _log;
-
-    /// <summary>Every toggle of the channel, in table order.</summary>
-    private readonly List<Item> _toggles = [];
-
-    private readonly List<Item> _togglesByPriority;
-
-    /// <summary>The toggles in the order of the layout without value keys.</summary>
-    private readonly List<Item> _togglesForStrips;
 
     private readonly SideStripDevices? _stripDevices;
     private readonly DeviceInfo? _device;
@@ -181,81 +177,140 @@ internal sealed class ChannelFolder : FolderProviderBase, IFolderSideStripProvid
     /// <summary>True once the host is known to draw the side strips for this folder: no value keys.</summary>
     private volatile bool _sideStrips;
 
-    /// <summary>The adjustment of each knob by rotary index, null for a knob without one.</summary>
-    private readonly AdjustmentSpec?[] _knobs;
-
-    private readonly Dictionary<int, RotaryOverride> _overrides = [];
-
-    /// <summary>
-    /// The strip's Gain when it sits on a knob of a Potato strip: while a bus has SEL on, that knob
-    /// carries the strip's gain layer for the bus (Strip[i].GainLayer[j]). Null for buses, other
-    /// editions and a strip without Gain on a knob; then no Sel parameter is read.
-    /// </summary>
-    private readonly AdjustmentSpec? _layerGain;
-
-    /// <summary>Bus[j].Sel of every bus, by API index; empty without <see cref="_layerGain"/>.</summary>
-    private readonly string[] _selParams = [];
-
     private sealed record LayerOverrides(int Bus, string Label, IReadOnlyDictionary<int, RotaryOverride> Overrides);
 
-    /// <summary>The overrides as last built for a selected bus; the host wants a fixed label per override.</summary>
-    private LayerOverrides? _layer;
+    /// <summary>Everything that depends on the edition, swapped whole when Voicemeeter comes back as another one.</summary>
+    private sealed class Layout(Edition edition, Channel channel, Edition? builtFor = null)
+    {
+        /// <summary>The edition names and ranges come from.</summary>
+        public Edition Edition { get; } = edition;
+
+        /// <summary>The edition the layout was made for; differs from <see cref="Edition"/> when the channel is missing there.</summary>
+        public Edition BuiltFor { get; } = builtFor ?? edition;
+
+        public Channel Channel { get; } = channel;
+
+        /// <summary>Every toggle of the channel, in table order; empty when the channel is not in this edition.</summary>
+        public List<Item> Toggles { get; } = [];
+
+        public List<Item> ByPriority { get; set; } = [];
+
+        /// <summary>The toggles in the order of the layout without value keys.</summary>
+        public List<Item> ForStrips { get; set; } = [];
+
+        /// <summary>The adjustment of each knob by rotary index, null for a knob without one.</summary>
+        public AdjustmentSpec?[] Knobs { get; set; } = new AdjustmentSpec?[KnobRotaries.Length];
+
+        public Dictionary<int, RotaryOverride> Overrides { get; } = [];
+
+        /// <summary>
+        /// The strip's Gain when it sits on a knob of a Potato strip: while a bus has SEL on, that knob
+        /// carries the strip's gain layer for the bus (Strip[i].GainLayer[j]). Null for buses, other
+        /// editions and a strip without Gain on a knob; then no Sel parameter is read.
+        /// </summary>
+        public AdjustmentSpec? LayerGain { get; set; }
+
+        /// <summary>Bus[j].Sel of every bus, by API index; empty without <see cref="LayerGain"/>.</summary>
+        public string[] SelParams { get; set; } = [];
+
+        /// <summary>The overrides as last built for a selected bus; the host wants a fixed label per override.</summary>
+        public LayerOverrides? Layer;
+    }
+
+    private Layout _layout;
 
     /// <summary>Toggle page of the knob layout, advanced by "More".</summary>
     private int _page;
 
-    public ChannelFolder(Channel channel, Edition edition, IReadOnlyList<ToggleSpec> toggles,
+    public ChannelFolder(Channel channel, string channelText, Edition edition, IReadOnlyList<ToggleSpec> toggles,
         IReadOnlyList<AdjustmentSpec> adjustments, VoicemeeterService vm, IPluginHost host, IPluginLogger log,
         IReadOnlyList<string?>? picks = null, SideStripDevices? stripDevices = null)
     {
-        _channel = channel;
-        _edition = edition;
+        _channelText = channelText;
+        _toggleSpecs = toggles;
+        _adjustmentSpecs = adjustments;
+        _picks = picks;
         _vm = vm;
         _host = host;
         _log = log;
         _stripDevices = stripDevices;
         _device = host.ActiveDevice;
         _sideStrips = stripDevices?.Contains(_device) == true;
+        _layout = Build(channel, edition);
+    }
 
+    /// <summary>
+    /// The layout for the current edition. Voicemeeter can come back as another edition while the
+    /// folder is open; the channel is then resolved again from the user's text (a bus index names
+    /// another bus there) and toggles and knobs are rebuilt. A channel the edition does not have keeps
+    /// its title and gets no keys and no knobs.
+    /// </summary>
+    private Layout L
+    {
+        get
+        {
+            var layout = Volatile.Read(ref _layout);
+            if (!_vm.IsConnected || _vm.Edition == layout.BuiltFor) return layout;
+            lock (_rebuild)
+            {
+                layout = _layout;
+                var edition = _vm.Edition;
+                if (edition == layout.BuiltFor || edition == Edition.Unknown) return layout;
+                layout = ChannelFolderCommand.TryResolve(_channelText, edition, out var channel, out _)
+                    ? Build(channel, edition)
+                    : new Layout(layout.Edition, layout.Channel, edition);
+                Volatile.Write(ref _page, 0);
+                Volatile.Write(ref _layout, layout);
+                _log.Info($"{ChannelFolderCommand.CommandName}: rebuilt for {EditionInfo.DisplayName(edition)}");
+                return layout;
+            }
+        }
+    }
+
+    private Layout Build(Channel channel, Edition edition)
+    {
+        var layout = new Layout(edition, channel);
         var isBus = channel.Kind == ChannelKind.Bus;
-        foreach (var spec in toggles)
+        foreach (var spec in _toggleSpecs)
         {
             if (!spec.AvailableIn(edition)) continue;
             if (MenuBuilder.ParameterValue(spec.Kind, isBus, channel.ApiIndex, edition) == null) continue;
             if (spec.Sub is { } sub)
             {
                 for (var n = 1; n <= sub.Count(edition); n++)
-                    AddToggle(spec, sub.FieldPrefix + n);
+                    AddToggle(layout, spec, sub.FieldPrefix + n);
             }
             else
             {
-                AddToggle(spec, spec.Field);
+                AddToggle(layout, spec, spec.Field);
             }
         }
 
-        _togglesByPriority = _toggles.OrderBy(t => Rank(TogglePriority, t.Field)).ToList();
-        _togglesForStrips = _toggles.OrderBy(t => Rank(StripTogglePriority, t.Field)).ToList();
+        layout.ByPriority = layout.Toggles.OrderBy(t => Rank(TogglePriority, t.Field)).ToList();
+        layout.ForStrips = layout.Toggles.OrderBy(t => Rank(StripTogglePriority, t.Field)).ToList();
 
         // Same applicability rules as the menu.
-        var available = adjustments
+        var available = _adjustmentSpecs
             .Where(spec => !spec.PotatoOnly || edition == Edition.Potato)
             .Where(spec => MenuBuilder.ParameterValue(spec.Kind, isBus, channel.ApiIndex, edition) != null)
             .OrderBy(spec => Rank(KnobPriority, spec.Name))
             .ToList();
-        _knobs = AssignKnobs(available, picks);
+        layout.Knobs = AssignKnobs(available, _picks);
 
-        for (var rotary = 0; rotary < _knobs.Length; rotary++)
+        for (var rotary = 0; rotary < layout.Knobs.Length; rotary++)
         {
-            if (_knobs[rotary] is not { } spec) continue;
-            _overrides[rotary] = Override(spec);
+            if (layout.Knobs[rotary] is not { } spec) continue;
+            layout.Overrides[rotary] = Override(spec);
         }
 
         if (!isBus && edition == Edition.Potato)
         {
-            _layerGain = _knobs.FirstOrDefault(spec => spec is { Name: "StripGain" });
-            if (_layerGain != null)
-                _selParams = Enumerable.Range(0, EditionInfo.Buses(edition)).Select(bus => VmParam.Name("Bus", bus, "Sel")).ToArray();
+            layout.LayerGain = layout.Knobs.FirstOrDefault(spec => spec is { Name: "StripGain" });
+            if (layout.LayerGain != null)
+                layout.SelParams = Enumerable.Range(0, EditionInfo.Buses(edition)).Select(bus => VmParam.Name("Bus", bus, "Sel")).ToArray();
         }
+
+        return layout;
     }
 
     private RotaryOverride Override(AdjustmentSpec spec) => new()
@@ -271,12 +326,12 @@ internal sealed class ChannelFolder : FolderProviderBase, IFolderSideStripProvid
     /// API index of the bus whose SEL is on, the lowest when there are several, -1 for none. Reads
     /// every bus, so each Sel is watched and a change redraws the folder.
     /// </summary>
-    private int SelectedBus()
+    private int SelectedBus(Layout layout)
     {
         var selected = -1;
-        for (var bus = 0; bus < _selParams.Length; bus++)
+        for (var bus = 0; bus < layout.SelParams.Length; bus++)
         {
-            if (_vm.TryGetFloat(_selParams[bus], ChannelFolderCommand.CommandName, out var sel) && sel >= 0.5f && selected < 0)
+            if (_vm.TryGetFloat(layout.SelParams[bus], ChannelFolderCommand.CommandName, out var sel) && sel >= 0.5f && selected < 0)
                 selected = bus;
         }
 
@@ -284,10 +339,10 @@ internal sealed class ChannelFolder : FolderProviderBase, IFolderSideStripProvid
     }
 
     /// <summary>Gain as the gain layer of <paramref name="bus"/>: same range, step and reset, named "Gain B1".</summary>
-    private AdjustmentSpec LayerSpec(int bus)
+    private static AdjustmentSpec LayerSpec(Layout layout, int bus, VoicemeeterService vm)
     {
-        var name = MenuBuilder.ChannelTitle(true, bus, _edition, channel => _vm.GetLabel(channel, ChannelFolderCommand.CommandName));
-        return _layerGain! with { Field = $"GainLayer[{bus}]", ButtonText = string.Format(Localization.Tr("Gain {0}"), name) };
+        var name = MenuBuilder.ChannelTitle(true, bus, layout.Edition, channel => vm.GetLabel(channel, ChannelFolderCommand.CommandName));
+        return layout.LayerGain! with { Field = $"GainLayer[{bus}]", ButtonText = string.Format(Localization.Tr("Gain {0}"), name) };
     }
 
     /// <summary>
@@ -320,8 +375,8 @@ internal sealed class ChannelFolder : FolderProviderBase, IFolderSideStripProvid
     internal static string ChoiceKey(string? text) =>
         (text ?? string.Empty).Replace(" ", string.Empty).Replace("_", string.Empty).ToLowerInvariant();
 
-    private void AddToggle(ToggleSpec spec, string field) =>
-        _toggles.Add(new Item(spec, field, spec.ButtonText ?? field, _channel.Param(field)));
+    private static void AddToggle(Layout layout, ToggleSpec spec, string field) =>
+        layout.Toggles.Add(new Item(spec, field, spec.ButtonText ?? field, layout.Channel.Param(field)));
 
     /// <summary>Position in <paramref name="priority"/>, or behind it; OrderBy is stable, so equal ranks keep table order.</summary>
     private static int Rank(string[] priority, string name)
@@ -330,14 +385,14 @@ internal sealed class ChannelFolder : FolderProviderBase, IFolderSideStripProvid
         return index < 0 ? priority.Length : index;
     }
 
-    /// <summary>
-    /// Voicemeeter came back as another edition while the folder was open: channel, ranges and
-    /// keys were built for the old one, so the folder neither reads nor writes until it is reopened.
-    /// </summary>
-    private bool Stale => _vm.IsConnected && _vm.Edition != _edition;
-
-    public override string Title =>
-        MenuBuilder.ChannelTitle(_channel.Kind == ChannelKind.Bus, _channel.ApiIndex, _edition, _vm.PeekLabel);
+    public override string Title
+    {
+        get
+        {
+            var layout = L;
+            return MenuBuilder.ChannelTitle(layout.Channel.Kind == ChannelKind.Bus, layout.Channel.ApiIndex, layout.Edition, _vm.PeekLabel);
+        }
+    }
 
     /// <summary>The host asks on every knob event, on its device input thread.</summary>
     public override IReadOnlyDictionary<int, RotaryOverride> RotaryOverrides
@@ -345,22 +400,23 @@ internal sealed class ChannelFolder : FolderProviderBase, IFolderSideStripProvid
         get
         {
             if (!HasKnobs(_host.FolderGrid)) return base.RotaryOverrides;
-            if (_layerGain == null) return _overrides;
+            var layout = L;
+            if (layout.LayerGain == null) return layout.Overrides;
             try
             {
-                var bus = SelectedBus();
-                if (bus < 0) return _overrides;
+                var bus = SelectedBus(layout);
+                if (bus < 0) return layout.Overrides;
 
-                var spec = LayerSpec(bus);
-                var layer = Volatile.Read(ref _layer);
+                var spec = LayerSpec(layout, bus, _vm);
+                var layer = Volatile.Read(ref layout.Layer);
                 if (layer == null || layer.Bus != bus || layer.Label != spec.Text)
                 {
-                    var overrides = new Dictionary<int, RotaryOverride>(_overrides)
+                    var overrides = new Dictionary<int, RotaryOverride>(layout.Overrides)
                     {
-                        [Array.FindIndex(_knobs, knob => ReferenceEquals(knob, _layerGain))] = Override(spec)
+                        [Array.FindIndex(layout.Knobs, knob => ReferenceEquals(knob, layout.LayerGain))] = Override(spec)
                     };
                     layer = new LayerOverrides(bus, spec.Text, overrides);
-                    Volatile.Write(ref _layer, layer);
+                    Volatile.Write(ref layout.Layer, layer);
                 }
 
                 return layer.Overrides;
@@ -368,7 +424,7 @@ internal sealed class ChannelFolder : FolderProviderBase, IFolderSideStripProvid
             catch (Exception ex)
             {
                 _log.Error($"{ChannelFolderCommand.CommandName}: knobs failed", ex);
-                return _overrides;
+                return layout.Overrides;
             }
         }
     }
@@ -422,18 +478,19 @@ internal sealed class ChannelFolder : FolderProviderBase, IFolderSideStripProvid
     {
         var grid = _host.FolderGrid;
         var entries = new List<FolderEntry>();
+        var layout = L;
         // The channel is named on the top-left key only.
-        var channelLabel = _vm.GetLabel(_channel, ChannelFolderCommand.CommandName);
+        var channelLabel = _vm.GetLabel(layout.Channel, ChannelFolderCommand.CommandName);
         string Label(int slot) => slot == 0 ? channelLabel : string.Empty;
-        var reason = Localization.Tr(Stale ? "reopen" : _vm.IsConnected ? "n/a" : "offline");
+        var reason = Localization.Tr(_vm.IsConnected ? "n/a" : "offline");
 
         if (!HasKnobs(grid))
         {
-            for (var i = 0; i < _toggles.Count; i++)
+            for (var i = 0; i < layout.Toggles.Count; i++)
             {
                 var slot = grid.SlotForIndex(i);
                 if (slot < 0) break;
-                entries.Add(ToggleEntry(slot, _toggles[i], Label(slot), reason));
+                entries.Add(ToggleEntry(slot, layout.Toggles[i], Label(slot), reason));
             }
 
             return entries;
@@ -442,17 +499,17 @@ internal sealed class ChannelFolder : FolderProviderBase, IFolderSideStripProvid
         if (_sideStrips)
         {
             var keys = Enumerable.Range(0, grid.TotalSlots).Where(slot => slot != grid.BackSlotIndex).ToList();
-            AddToggles(entries, keys, _togglesForStrips, Label, reason);
+            AddToggles(entries, keys, layout.ForStrips, Label, reason);
             return entries;
         }
 
-        var selected = SelectedBus();
+        var selected = SelectedBus(layout);
         foreach (var rotary in KnobRotaries)
         {
-            if (rotary == BackKeyRotary || _knobs[rotary] is not { } spec) continue;
+            if (rotary == BackKeyRotary || layout.Knobs[rotary] is not { } spec) continue;
             var slot = KnobSlot(grid, rotary);
-            var shown = selected >= 0 && ReferenceEquals(spec, _layerGain) ? LayerSpec(selected) : spec;
-            entries.Add(ValueEntry(slot, shown, Label(slot), reason));
+            var shown = selected >= 0 && ReferenceEquals(spec, layout.LayerGain) ? LayerSpec(layout, selected, _vm) : spec;
+            entries.Add(ValueEntry(slot, shown, Label(slot), layout.Channel, reason));
         }
 
         var slots = new List<int>();
@@ -460,7 +517,7 @@ internal sealed class ChannelFolder : FolderProviderBase, IFolderSideStripProvid
         for (var column = 1; column < grid.Columns - 1; column++)
             slots.Add(row * grid.Columns + column);
 
-        AddToggles(entries, slots, _togglesByPriority, Label, reason);
+        AddToggles(entries, slots, layout.ByPriority, Label, reason);
         return entries;
     }
 
@@ -488,7 +545,7 @@ internal sealed class ChannelFolder : FolderProviderBase, IFolderSideStripProvid
 
     private FolderEntry ToggleEntry(int slot, Item item, string label, string reason)
     {
-        var readable = _vm.TryGetFloat(item.Param, ChannelFolderCommand.CommandName, out var value) && !Stale;
+        var readable = _vm.TryGetFloat(item.Param, ChannelFolderCommand.CommandName, out var value);
         var on = value >= 0.5f;
         return new FolderEntry
         {
@@ -503,9 +560,9 @@ internal sealed class ChannelFolder : FolderProviderBase, IFolderSideStripProvid
     }
 
     /// <summary>The adjustment's own value bar. No OnPress: a touch must not reset a fader.</summary>
-    private FolderEntry ValueEntry(int slot, AdjustmentSpec spec, string label, string reason)
+    private FolderEntry ValueEntry(int slot, AdjustmentSpec spec, string label, Channel channel, string reason)
     {
-        var readable = AdjustmentCommandBase.TryReadBar(spec, _vm, _channel, ChannelFolderCommand.CommandName, out var bar) && !Stale;
+        var readable = AdjustmentCommandBase.TryReadBar(spec, _vm, channel, ChannelFolderCommand.CommandName, out var bar);
         return new FolderEntry
         {
             SlotIndex = slot,
@@ -526,9 +583,10 @@ internal sealed class ChannelFolder : FolderProviderBase, IFolderSideStripProvid
     {
         try
         {
-            if (!_vm.IsConnected || Stale) return null;
-            if (!_vm.TryGetFloat(_channel.Param(spec.Field), ChannelFolderCommand.CommandName, out var value)) return null;
-            var (min, max) = spec.RangeFor(_channel, _edition);
+            if (!_vm.IsConnected) return null;
+            var layout = L;
+            if (!_vm.TryGetFloat(layout.Channel.Param(spec.Field), ChannelFolderCommand.CommandName, out var value)) return null;
+            var (min, max) = spec.RangeFor(layout.Channel, layout.Edition);
             return new AdjustmentValue(ValueMath.Fraction(value, min, max), spec.FormatValue(value));
         }
         catch (Exception ex)
@@ -557,7 +615,7 @@ internal sealed class ChannelFolder : FolderProviderBase, IFolderSideStripProvid
     /// value after a turn itself, so a folder redraw would only paint the strips twice.
     /// </summary>
     private Task Adjust(AdjustmentSpec spec, Func<float, float, float, float> compute, bool turn = false) => Act((out string error) =>
-        AdjustmentCommandBase.TryWrite(spec, _vm, _channel, ChannelFolderCommand.CommandName, compute, out _, out error,
+        AdjustmentCommandBase.TryWrite(spec, _vm, L.Channel, ChannelFolderCommand.CommandName, compute, out _, out error,
             quiet: turn && _sideStrips));
 
     /// <summary>Runs a key or knob write. Failures are logged, never thrown: the host does not catch a knob press.</summary>
@@ -568,12 +626,6 @@ internal sealed class ChannelFolder : FolderProviderBase, IFolderSideStripProvid
             if (!_vm.IsConnected)
             {
                 _log.Warn($"{ChannelFolderCommand.CommandName}: {_vm.Status}");
-                return Task.CompletedTask;
-            }
-
-            if (Stale)
-            {
-                _log.Warn($"{ChannelFolderCommand.CommandName}: Voicemeeter edition changed, reopen the folder");
                 return Task.CompletedTask;
             }
 
