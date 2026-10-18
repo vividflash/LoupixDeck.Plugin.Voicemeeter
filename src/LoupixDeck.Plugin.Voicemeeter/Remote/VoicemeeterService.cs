@@ -262,6 +262,9 @@ internal sealed class VoicemeeterService : IDisposable
 
     private void Watch(string param, string commandName, bool isString = false)
     {
+        // Already registered (the common render case): nothing to change.
+        if (_watchers.TryGetValue(param, out var known) && known.Contains(commandName)
+            && (!isString || _stringParams.Contains(param))) return;
         _commands.Add(commandName);
         if (isString) _stringParams.Add(param);
         if (!_watchers.TryGetValue(param, out var set))

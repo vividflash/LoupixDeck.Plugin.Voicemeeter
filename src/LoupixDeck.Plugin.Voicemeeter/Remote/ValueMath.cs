@@ -14,11 +14,13 @@ internal static class ValueMath
     /// <summary>"0.0 dB", "-3.5 dB", "+2.0 dB" (invariant culture, sign on positives).</summary>
     public static string FormatDb(float value) => Format(value, 1, "dB", signed: true);
 
+    private static readonly string[] FixedFormats = { "F0", "F1", "F2", "F3", "F4" };
+
     public static string Format(float value, int decimals, string unit, bool signed)
     {
         var rounded = MathF.Round(value, decimals);
         if (rounded == 0) rounded = 0; // no "-0.0"
-        var number = rounded.ToString("F" + decimals, CultureInfo.InvariantCulture);
+        var number = rounded.ToString((uint)decimals < (uint)FixedFormats.Length ? FixedFormats[decimals] : "F" + decimals, CultureInfo.InvariantCulture);
         if (signed && rounded > 0) number = "+" + number;
         return string.IsNullOrEmpty(unit) ? number : $"{number} {unit}";
     }

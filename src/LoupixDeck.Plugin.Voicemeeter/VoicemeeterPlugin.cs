@@ -21,7 +21,7 @@ public sealed class VoicemeeterPlugin : LoupixPlugin, IPluginSettingsPage, IMenu
     {
         Id = "voicemeeter",
         Name = "Voicemeeter",
-        Version = new Version(1, 3, 3),
+        Version = new Version(1, 4, 0),
         SdkVersion = new Version(1, 31, 0),
         Author = "vividflash",
         Description = "Mute and gain controls for Voicemeeter, Banana and Potato strips and buses."

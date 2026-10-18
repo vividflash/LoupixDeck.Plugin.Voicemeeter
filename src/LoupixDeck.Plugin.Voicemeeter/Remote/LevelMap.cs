@@ -43,7 +43,7 @@ internal static class LevelMap
     /// <summary>Accepts PreFader/PostFader/PostMute/Output, the original enum names, or 0-3.</summary>
     public static bool TryParseType(string? text, out LevelType type)
     {
-        var trimmed = (text ?? string.Empty).Trim();
+        var trimmed = (text ?? string.Empty).AsSpan().Trim();
         type = LevelType.PostFaderInput;
         if (int.TryParse(trimmed, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n))
         {
@@ -52,9 +52,13 @@ internal static class LevelMap
             return true;
         }
 
-        var raw = trimmed.Replace("-", "").Replace(" ", "");
+        // strip '-' and ' ', lower-case, without allocating
+        Span<char> buffer = trimmed.Length <= 64 ? stackalloc char[64] : new char[trimmed.Length];
+        var length = 0;
+        foreach (var c in trimmed)
+            if (c != '-' && c != ' ') buffer[length++] = char.ToLowerInvariant(c);
 
-        switch (raw.ToLowerInvariant())
+        switch ((ReadOnlySpan<char>)buffer[..length])
         {
             case "pre" or "prefader" or "prefaderinput":
                 type = LevelType.PreFaderInput;
@@ -90,6 +94,16 @@ internal static class LevelMap
         float.IsNegativeInfinity(db) ? 0f : Math.Clamp((db - MinDb) / (MaxDb - MinDb), 0f, 1f);
 
     /// <summary>"-12 dB", or "-inf" below the meter floor.</summary>
-    public static string FormatDb(float db) =>
-        db < MinDb ? "-inf" : string.Create(CultureInfo.InvariantCulture, $"{MathF.Round(db) + 0f:0} dB");
+    public static string FormatDb(float db)
+    {
+        if (db < MinDb) return "-inf";
+        var rounded = MathF.Round(db) + 0f;
+        if (rounded >= MinDb && rounded <= MaxDb) return DbTexts[(int)rounded - (int)MinDb];
+        return DbText(rounded);
+    }
+
+    private static string DbText(float rounded) => string.Create(CultureInfo.InvariantCulture, $"{rounded:0} dB");
+
+    // one text per whole dB step on the meter scale, built once
+    private static readonly string[] DbTexts = Enumerable.Range((int)MinDb, (int)(MaxDb - MinDb) + 1).Select(i => DbText(i)).ToArray();
 }

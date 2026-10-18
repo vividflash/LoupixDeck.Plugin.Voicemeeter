@@ -341,8 +341,13 @@ internal sealed class ChannelFolder : FolderProviderBase, IFolderSideStripProvid
     /// <summary>Gain as the gain layer of <paramref name="bus"/>: same range, step and reset, named "Gain B1".</summary>
     private static AdjustmentSpec LayerSpec(Layout layout, int bus, VoicemeeterService vm)
     {
+        return layout.LayerGain! with { Field = $"GainLayer[{bus}]", ButtonText = LayerText(layout, bus, vm) };
+    }
+
+    private static string LayerText(Layout layout, int bus, VoicemeeterService vm)
+    {
         var name = MenuBuilder.ChannelTitle(true, bus, layout.Edition, channel => vm.GetLabel(channel, ChannelFolderCommand.CommandName));
-        return layout.LayerGain! with { Field = $"GainLayer[{bus}]", ButtonText = string.Format(Localization.Tr("Gain {0}"), name) };
+        return string.Format(Localization.Tr("Gain {0}"), name);
     }
 
     /// <summary>
@@ -407,15 +412,16 @@ internal sealed class ChannelFolder : FolderProviderBase, IFolderSideStripProvid
                 var bus = SelectedBus(layout);
                 if (bus < 0) return layout.Overrides;
 
-                var spec = LayerSpec(layout, bus, _vm);
+                var text = LayerText(layout, bus, _vm);
                 var layer = Volatile.Read(ref layout.Layer);
-                if (layer == null || layer.Bus != bus || layer.Label != spec.Text)
+                if (layer == null || layer.Bus != bus || layer.Label != text)
                 {
+                    var spec = LayerSpec(layout, bus, _vm);
                     var overrides = new Dictionary<int, RotaryOverride>(layout.Overrides)
                     {
                         [Array.FindIndex(layout.Knobs, knob => ReferenceEquals(knob, layout.LayerGain))] = Override(spec)
                     };
-                    layer = new LayerOverrides(bus, spec.Text, overrides);
+                    layer = new LayerOverrides(bus, text, overrides);
                     Volatile.Write(ref layout.Layer, layer);
                 }
 
@@ -498,8 +504,7 @@ internal sealed class ChannelFolder : FolderProviderBase, IFolderSideStripProvid
 
         if (_sideStrips)
         {
-            var keys = Enumerable.Range(0, grid.TotalSlots).Where(slot => slot != grid.BackSlotIndex).ToList();
-            AddToggles(entries, keys, layout.ForStrips, Label, reason);
+            AddToggles(entries, SlotsFor(grid).Keys, layout.ForStrips, Label, reason);
             return entries;
         }
 
@@ -512,13 +517,30 @@ internal sealed class ChannelFolder : FolderProviderBase, IFolderSideStripProvid
             entries.Add(ValueEntry(slot, shown, Label(slot), layout.Channel, reason));
         }
 
-        var slots = new List<int>();
+        AddToggles(entries, SlotsFor(grid).Inner, layout.ByPriority, Label, reason);
+        return entries;
+    }
+
+    /// <summary>The key lists for a grid, kept until the grid changes.</summary>
+    private sealed record GridSlots(int Total, int Back, int Rows, int Columns, List<int> Keys, List<int> Inner);
+
+    private GridSlots? _gridSlots;
+
+    private GridSlots SlotsFor(FolderGridInfo grid)
+    {
+        var cached = Volatile.Read(ref _gridSlots);
+        if (cached != null && cached.Total == grid.TotalSlots && cached.Back == grid.BackSlotIndex
+            && cached.Rows == grid.Rows && cached.Columns == grid.Columns) return cached;
+
+        var inner = new List<int>();
         for (var row = 0; row < grid.Rows; row++)
         for (var column = 1; column < grid.Columns - 1; column++)
-            slots.Add(row * grid.Columns + column);
+            inner.Add(row * grid.Columns + column);
 
-        AddToggles(entries, slots, layout.ByPriority, Label, reason);
-        return entries;
+        cached = new GridSlots(grid.TotalSlots, grid.BackSlotIndex, grid.Rows, grid.Columns,
+            Enumerable.Range(0, grid.TotalSlots).Where(slot => slot != grid.BackSlotIndex).ToList(), inner);
+        Volatile.Write(ref _gridSlots, cached);
+        return cached;
     }
 
     /// <summary>The toggles on the given keys; when they do not fit, the last key is "More" and the page decides which ones show.</summary>

@@ -139,6 +139,8 @@ internal sealed class LevelStripSession : ISideStripSession, ISegmentStripSessio
     private readonly IDisposable _subscription;
     private Band[] _bands = [];
     private int _signature;
+    private string? _fallbackRaw;
+    private List<LevelSource?>? _fallback;
     private long _lastChange = long.MinValue / 2;
     private bool _disposed;
 
@@ -166,8 +168,10 @@ internal sealed class LevelStripSession : ISideStripSession, ISegmentStripSessio
     {
         if (UsesDials) return _bound;
         var slots = Math.Max(1, _context.Rotaries.Count);
-        return DialChannelParser.ParseFallback(_settings.Get(LevelStripProvider.FallbackKey, LevelStripProvider.DefaultFallback))
-            .Take(slots).Select(s => (LevelSource?)s).ToList();
+        var raw = _settings.Get(LevelStripProvider.FallbackKey, LevelStripProvider.DefaultFallback);
+        if (_fallback != null && raw == _fallbackRaw) return _fallback;
+        _fallbackRaw = raw;
+        return _fallback = DialChannelParser.ParseFallback(raw).Take(slots).Select(s => (LevelSource?)s).ToList();
     }
 
     private void OnLevelTick()

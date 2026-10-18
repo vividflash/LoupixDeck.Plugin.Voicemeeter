@@ -85,11 +85,23 @@ internal static class EditionInfo
     public static int Buses(Edition e) => ABuses(e) + BBuses(e);
 
     /// <summary>Bus names in API index order, e.g. Potato: A1 A2 A3 A4 A5 B1 B2 B3.</summary>
-    public static IReadOnlyList<string> BusNames(Edition e)
+    public static IReadOnlyList<string> BusNames(Edition e) => e switch
+    {
+        Edition.Standard => StandardBusNames,
+        Edition.Banana => BananaBusNames,
+        Edition.Potato => PotatoBusNames,
+        _ => Array.Empty<string>()
+    };
+
+    private static readonly string[] StandardBusNames = BuildBusNames(Edition.Standard);
+    private static readonly string[] BananaBusNames = BuildBusNames(Edition.Banana);
+    private static readonly string[] PotatoBusNames = BuildBusNames(Edition.Potato);
+
+    private static string[] BuildBusNames(Edition e)
     {
         var names = new List<string>();
         for (var i = 1; i <= ABuses(e); i++) names.Add($"A{i}");
         for (var i = 1; i <= BBuses(e); i++) names.Add($"B{i}");
-        return names;
+        return names.ToArray();
     }
 }

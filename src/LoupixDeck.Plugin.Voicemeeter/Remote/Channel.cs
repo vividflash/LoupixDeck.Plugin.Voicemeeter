@@ -32,8 +32,18 @@ internal readonly record struct Channel(ChannelKind Kind, int ApiIndex, string N
 internal static class VmParam
 {
     /// <summary>"Strip[0].Mute"-style parameter name.</summary>
-    public static string Name(string prefix, int apiIndex, string field) =>
-        string.Create(CultureInfo.InvariantCulture, $"{prefix}[{apiIndex}].{field}");
+    public static string Name(string prefix, int apiIndex, string field)
+    {
+        var key = (prefix, apiIndex, field);
+        if (NameCache.TryGetValue(key, out var cached)) return cached;
+        var name = string.Create(CultureInfo.InvariantCulture, $"{prefix}[{apiIndex}].{field}");
+        if (NameCache.Count < MaxCachedNames) NameCache.TryAdd(key, name);
+        return name;
+    }
+
+    // Names are rebuilt on every render and dial turn; the set is small, the cap guards odd input.
+    private const int MaxCachedNames = 4096;
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<(string, int, string), string> NameCache = new();
 
     /// <summary>
     /// Command parameter name shown in the LoupixDeck command builder for a kind. Strip,

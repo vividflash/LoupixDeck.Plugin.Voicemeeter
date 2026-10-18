@@ -54,8 +54,11 @@ internal sealed class RawCommand : VmCommandBase, IDisplayImageCommand
         p.Length > 0 ? p[0] : string.Empty,
         p.Length > 1 ? p[1] : string.Empty,
         p.Length > 2 ? p[2] : string.Empty,
-        p.Length > 3 ? string.Join(",", p[3..]).Trim() : string.Empty
+        p.Length > 3 ? JoinApi(p) : string.Empty
     );
+
+    /// <summary>Api from parameter index 3 onward; the common single part needs no join.</summary>
+    internal static string JoinApi(string[] p) => p.Length == 4 ? p[3].Trim() : string.Join(",", p[3..]).Trim();
 
     protected override Task Run(CommandContext ctx)
     {
@@ -202,7 +205,7 @@ internal abstract class RawAdjustmentCommandBase : VmCommandBase
         step = ValueMath.ParseStep(ctx.Parameters.Length > 0 ? ctx.Parameters[0] : null, 1f);
         min = ParseFloat(ctx.Parameters, 1, 0f);
         max = ParseFloat(ctx.Parameters, 2, 10f);
-        api = ctx.Parameters.Length > 3 ? string.Join(",", ctx.Parameters[3..]).Trim() : string.Empty;
+        api = ctx.Parameters.Length > 3 ? RawCommand.JoinApi(ctx.Parameters) : string.Empty;
 
         if (api.Length == 0)
         {
