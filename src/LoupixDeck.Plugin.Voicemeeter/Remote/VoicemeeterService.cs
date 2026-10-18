@@ -168,6 +168,8 @@ internal sealed class VoicemeeterService : IDisposable
 
         lock (_sync)
         {
+            // Dispose may have freed the native library while this tick waited for the lock.
+            if (_disposed || !_loggedIn) return;
             if (State != ConnectionState.Connected)
             {
                 var type = Safe(() => _api.GetVoicemeeterType(out var t) == 0 ? t : 0, 0);

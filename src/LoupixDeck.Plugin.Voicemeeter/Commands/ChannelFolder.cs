@@ -330,6 +330,12 @@ internal sealed class ChannelFolder : FolderProviderBase, IFolderSideStripProvid
         return index < 0 ? priority.Length : index;
     }
 
+    /// <summary>
+    /// Voicemeeter came back as another edition while the folder was open: channel, ranges and
+    /// keys were built for the old one, so the folder neither reads nor writes until it is reopened.
+    /// </summary>
+    private bool Stale => _vm.IsConnected && _vm.Edition != _edition;
+
     public override string Title =>
         MenuBuilder.ChannelTitle(_channel.Kind == ChannelKind.Bus, _channel.ApiIndex, _edition, _vm.PeekLabel);
 
@@ -419,7 +425,7 @@ internal sealed class ChannelFolder : FolderProviderBase, IFolderSideStripProvid
         // The channel is named on the top-left key only.
         var channelLabel = _vm.GetLabel(_channel, ChannelFolderCommand.CommandName);
         string Label(int slot) => slot == 0 ? channelLabel : string.Empty;
-        var reason = Localization.Tr(_vm.IsConnected ? "n/a" : "offline");
+        var reason = Localization.Tr(Stale ? "reopen" : _vm.IsConnected ? "n/a" : "offline");
 
         if (!HasKnobs(grid))
         {
@@ -482,7 +488,7 @@ internal sealed class ChannelFolder : FolderProviderBase, IFolderSideStripProvid
 
     private FolderEntry ToggleEntry(int slot, Item item, string label, string reason)
     {
-        var readable = _vm.TryGetFloat(item.Param, ChannelFolderCommand.CommandName, out var value);
+        var readable = _vm.TryGetFloat(item.Param, ChannelFolderCommand.CommandName, out var value) && !Stale;
         var on = value >= 0.5f;
         return new FolderEntry
         {
@@ -499,7 +505,7 @@ internal sealed class ChannelFolder : FolderProviderBase, IFolderSideStripProvid
     /// <summary>The adjustment's own value bar. No OnPress: a touch must not reset a fader.</summary>
     private FolderEntry ValueEntry(int slot, AdjustmentSpec spec, string label, string reason)
     {
-        var readable = AdjustmentCommandBase.TryReadBar(spec, _vm, _channel, ChannelFolderCommand.CommandName, out var bar);
+        var readable = AdjustmentCommandBase.TryReadBar(spec, _vm, _channel, ChannelFolderCommand.CommandName, out var bar) && !Stale;
         return new FolderEntry
         {
             SlotIndex = slot,
@@ -520,7 +526,7 @@ internal sealed class ChannelFolder : FolderProviderBase, IFolderSideStripProvid
     {
         try
         {
-            if (!_vm.IsConnected) return null;
+            if (!_vm.IsConnected || Stale) return null;
             if (!_vm.TryGetFloat(_channel.Param(spec.Field), ChannelFolderCommand.CommandName, out var value)) return null;
             var (min, max) = spec.RangeFor(_channel, _edition);
             return new AdjustmentValue(ValueMath.Fraction(value, min, max), spec.FormatValue(value));
@@ -562,6 +568,12 @@ internal sealed class ChannelFolder : FolderProviderBase, IFolderSideStripProvid
             if (!_vm.IsConnected)
             {
                 _log.Warn($"{ChannelFolderCommand.CommandName}: {_vm.Status}");
+                return Task.CompletedTask;
+            }
+
+            if (Stale)
+            {
+                _log.Warn($"{ChannelFolderCommand.CommandName}: Voicemeeter edition changed, reopen the folder");
                 return Task.CompletedTask;
             }
 

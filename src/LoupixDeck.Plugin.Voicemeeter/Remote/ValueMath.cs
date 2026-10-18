@@ -5,9 +5,9 @@ namespace LoupixDeck.Plugin.Voicemeeter.Remote;
 /// <summary>Pure number helpers for adjustments (clamping, stepping, formatting, parsing).</summary>
 internal static class ValueMath
 {
-    /// <summary>current + ticks * step, clamped to [min, max] and rounded to 0.01 to stop float drift.</summary>
+    /// <summary>current + ticks * step, clamped to [min, max] and rounded to 0.0001 to stop float drift.</summary>
     public static float Step(float current, int ticks, float step, float min, float max) =>
-        Clamp(MathF.Round(current + ticks * step, 2), min, max);
+        Clamp(MathF.Round(current + ticks * step, 4), min, max);
 
     public static float Clamp(float value, float min, float max) => MathF.Min(max, MathF.Max(min, value));
 

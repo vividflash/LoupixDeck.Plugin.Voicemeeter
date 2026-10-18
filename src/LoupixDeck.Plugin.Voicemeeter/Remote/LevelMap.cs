@@ -43,14 +43,16 @@ internal static class LevelMap
     /// <summary>Accepts PreFader/PostFader/PostMute/Output, the original enum names, or 0-3.</summary>
     public static bool TryParseType(string? text, out LevelType type)
     {
-        var raw = (text ?? string.Empty).Trim().Replace("-", "").Replace(" ", "");
+        var trimmed = (text ?? string.Empty).Trim();
         type = LevelType.PostFaderInput;
-        if (int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n))
+        if (int.TryParse(trimmed, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n))
         {
             if (n is < 0 or > 3) return false;
             type = (LevelType)n;
             return true;
         }
+
+        var raw = trimmed.Replace("-", "").Replace(" ", "");
 
         switch (raw.ToLowerInvariant())
         {
