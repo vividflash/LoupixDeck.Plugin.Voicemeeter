@@ -89,6 +89,16 @@ internal sealed class VoicemeeterService : IDisposable
     /// </summary>
     public event Action<string>? CommandRefreshed;
 
+    /// <summary>
+    /// Raised (outside the lock) when what the menu is built from changed: the connection came up
+    /// or went down, the menu edition changed, or a strip or bus label changed. Labels are compared
+    /// on connect and on dirty ticks only.
+    /// </summary>
+    public event Action? MenuChanged;
+
+    // What the menu was last built from: connected, MenuEdition, one label per strip then bus ("" = none).
+    private (bool Connected, Edition Edition, string[] Labels) _menuInputs = (false, Edition.Unknown, []);
+
     public string Status => State switch
     {
         ConnectionState.NotInstalled => _loadMessage,
@@ -118,6 +128,7 @@ internal sealed class VoicemeeterService : IDisposable
         _log.Info($"Voicemeeter: login returned {rc} ({LoginText(rc)})");
         if (!_loggedIn) return;
 
+        lock (_sync) _menuInputs = ReadMenuInputs();
         PollOnce();
         if (!runLoop) return;
 
@@ -164,6 +175,7 @@ internal sealed class VoicemeeterService : IDisposable
 
         HashSet<string>? toRefresh = null;
         var stateChanged = false;
+        var menuChanged = false;
         string? logLine = null;
 
         lock (_sync)
@@ -206,13 +218,20 @@ internal sealed class VoicemeeterService : IDisposable
                 else
                 {
                     _dirtyFailures = 0;
-                    if (dirty > 0) toRefresh = ReadAllWatched();
+                    if (dirty > 0)
+                    {
+                        toRefresh = ReadAllWatched();
+                        menuChanged = UpdateMenuInputs();
+                    }
                 }
             }
+
+            if (stateChanged) menuChanged = UpdateMenuInputs();
         }
 
         if (logLine != null) _log.Info(logLine);
         if (stateChanged) RaiseStateChanged();
+        if (menuChanged) RaiseMenuChanged();
         lock (_sync)
         {
             if (_pendingRefresh.Count > 0) (toRefresh ??= new HashSet<string>(StringComparer.Ordinal)).UnionWith(_pendingRefresh);
@@ -252,6 +271,35 @@ internal sealed class VoicemeeterService : IDisposable
         }
 
         return changed;
+    }
+
+    /// <summary>
+    /// What <c>GetMenuNodes</c> builds from: connected, <see cref="MenuEdition"/> and the live label
+    /// of every strip and bus of that edition (trimmed, "" when empty). Caller holds the lock.
+    /// </summary>
+    private (bool Connected, Edition Edition, string[] Labels) ReadMenuInputs()
+    {
+        var edition = MenuEdition;
+        if (!IsConnected || _api == null) return (false, edition, []);
+        var strips = EditionInfo.Strips(edition);
+        var labels = new string[strips + EditionInfo.Buses(edition)];
+        for (var i = 0; i < labels.Length; i++)
+        {
+            var param = i < strips ? VmParam.Name("Strip", i, "Label") : VmParam.Name("Bus", i - strips, "Label");
+            labels[i] = Safe(() => _api.GetString(param, out var s) == 0 ? s : null, null)?.Trim() ?? string.Empty;
+        }
+
+        return (true, edition, labels);
+    }
+
+    /// <summary>Re-reads the menu inputs; true when they differ from the last ones. Caller holds the lock.</summary>
+    private bool UpdateMenuInputs()
+    {
+        var next = ReadMenuInputs();
+        var last = _menuInputs;
+        if (next.Connected == last.Connected && next.Edition == last.Edition && next.Labels.AsSpan().SequenceEqual(last.Labels)) return false;
+        _menuInputs = next;
+        return true;
     }
 
     /// <summary>Makes sure connection changes redraw this command even before it has read anything.</summary>
@@ -590,6 +638,18 @@ internal sealed class VoicemeeterService : IDisposable
         catch (Exception ex)
         {
             _log.Error("Voicemeeter: StateChanged handler failed", ex);
+        }
+    }
+
+    private void RaiseMenuChanged()
+    {
+        try
+        {
+            MenuChanged?.Invoke();
+        }
+        catch (Exception ex)
+        {
+            _log.Error("Voicemeeter: MenuChanged handler failed", ex);
         }
     }
 

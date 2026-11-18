@@ -110,7 +110,7 @@ The plugin setting `redraw.perSecond` (1 to 20, default 10) limits how often the
 
 ## Building
 
-Run `.\build.ps1` (this writes `dist\voicemeeter-<version>-windows.zip`). The plugin needs LoupixDeck 1.42.0 or newer (the channel folder's side strips need it).
+Run `.\build.ps1` (this writes `dist\voicemeeter-<version>-windows.zip`). The plugin needs LoupixDeck 1.51.0 or newer.
 
 ## License
 

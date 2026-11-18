@@ -14,6 +14,7 @@ public sealed class VoicemeeterPlugin : LoupixPlugin, IPluginSettingsPage, IMenu
 {
     private IPluginHost? _host;
     private VoicemeeterService? _vm;
+    private HostSignals? _signals;
     private List<IPluginCommand> _commands = [];
     private List<ISideStripProvider> _sideStrips = [];
 
@@ -21,8 +22,8 @@ public sealed class VoicemeeterPlugin : LoupixPlugin, IPluginSettingsPage, IMenu
     {
         Id = "voicemeeter",
         Name = "Voicemeeter",
-        Version = new Version(1, 4, 0),
-        SdkVersion = new Version(1, 31, 0),
+        Version = new Version(1, 5, 0),
+        SdkVersion = new Version(1, 36, 0),
         Author = "vividflash",
         Description = "Mute and gain controls for Voicemeeter, Banana and Potato strips and buses."
     };
@@ -50,7 +51,9 @@ public sealed class VoicemeeterPlugin : LoupixPlugin, IPluginSettingsPage, IMenu
         _vm.ApplySettings(host.Settings);
         _commands = BuildCommands(_vm, host.Logger);
         _sideStrips = Levels.CreateSideStrips(_vm, host.Logger, host.Settings).ToList();
+        _signals = new HostSignals(host, _vm);
         _vm.Start();
+        _signals.ReportAvailability();
     }
 
     /// <summary>The single registration point: one list per action family.</summary>
@@ -149,6 +152,8 @@ public sealed class VoicemeeterPlugin : LoupixPlugin, IPluginSettingsPage, IMenu
 
     public override void Shutdown()
     {
+        _signals?.Dispose();
+        _signals = null;
         _vm?.Dispose();
         _vm = null;
     }
